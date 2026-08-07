@@ -20,7 +20,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -62,8 +61,6 @@ public class AuthService {
                 .email(signUpRequestDto.getEmail())
                 .name(signUpRequestDto.getName())
                 .password(passwordEncoder.encode(signUpRequestDto.getPassword()))
-                .registeredAt(LocalDateTime.now())
-                .modifiedAt(LocalDateTime.now())
                 .build();
 
         try {
