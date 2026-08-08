@@ -1,10 +1,13 @@
 package com.likelionknu.notdesign.plan.service;
 
+import com.likelionknu.notdesign.diary.data.entity.DailyChecklist;
+import com.likelionknu.notdesign.diary.data.repository.DailyChecklistRepository;
 import com.likelionknu.notdesign.diary.data.repository.DiaryRepository;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailItemResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanStatsResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanSummaryResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanTodoResponseDto;
 import com.likelionknu.notdesign.plan.data.entity.Plan;
 import com.likelionknu.notdesign.plan.data.entity.PlanItem;
 import com.likelionknu.notdesign.plan.data.entity.PlanProcess;
@@ -43,6 +46,7 @@ public class PlanService {
     private final PlanTimelineWeekRepository planTimelineWeekRepository;
     private final ResultRepository resultRepository;
     private final DiaryRepository diaryRepository;
+    private final DailyChecklistRepository dailyChecklistRepository;
 
     /**
      * 홈 화면에서 현재 진행 중인 플랜의 진행 요약을 조회합니다.
@@ -134,6 +138,24 @@ public class PlanService {
                 .build();
     }
 
+    /**
+     * 하루 기록 생성 화면에서 오늘 실천할 플랜 항목(체크리스트)을 조회합니다.
+     *
+     * @param email 조회 대상 사용자
+     * @return 오늘 날짜의 실천 항목 목록 (기록 생성 전이라 실천 여부는 모두 미완료)
+     */
+    @Transactional(readOnly = true)
+    public List<PlanTodoResponseDto> getCurrentPlanTodos(String email) {
+        PlanProcess process = getCurrentProcess(email);
+        LocalDate today = LocalDate.now(KST);
+
+        return dailyChecklistRepository
+                .findAllByProcess_IdAndTargetDateOrderByTimeline_Item_IdAsc(process.getId(), today)
+                .stream()
+                .map(this::toTodo)
+                .toList();
+    }
+
     private PlanProcess getCurrentProcess(String email) {
         User user = userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
 
@@ -175,6 +197,18 @@ public class PlanService {
                 .price(item.getPrice())
                 .weeks(weeksByTimeline.getOrDefault(timeline.getId(), List.of()))
                 .reason(timeline.getReason())
+                .build();
+    }
+
+    private PlanTodoResponseDto toTodo(DailyChecklist checklist) {
+        PlanItem item = checklist.getTimeline().getItem();
+
+        return PlanTodoResponseDto.builder()
+                .checklistId(checklist.getId())
+                .category(item.getCategory())
+                .categoryName(item.getCategory().getDisplayName())
+                .name(item.getName())
+                .done(false)
                 .build();
     }
 
