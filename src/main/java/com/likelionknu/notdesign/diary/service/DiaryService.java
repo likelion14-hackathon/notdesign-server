@@ -3,6 +3,7 @@ package com.likelionknu.notdesign.diary.service;
 import com.likelionknu.notdesign.diary.data.dto.response.DiaryCalendarResponseDto;
 import com.likelionknu.notdesign.diary.data.dto.response.DiaryResponseDto;
 import com.likelionknu.notdesign.diary.data.dto.response.DiaryTodoResponseDto;
+import com.likelionknu.notdesign.diary.data.entity.DailyChecklist;
 import com.likelionknu.notdesign.diary.data.entity.Diary;
 import com.likelionknu.notdesign.diary.exception.DiaryNotFoundException;
 import com.likelionknu.notdesign.diary.data.repository.DiaryRepository;
@@ -89,15 +90,17 @@ public class DiaryService {
         ).stream().findFirst()
                 .orElseThrow(() -> new DiaryNotFoundException(user.getId(), recordedDate));
 
-        List<DiaryTodoResponseDto> todos = diaryTodoRepository.findAllByDiary_IdOrderByTimeline_Item_IdAsc(diary.getId())
+        List<DiaryTodoResponseDto> todos = diaryTodoRepository.findAllByDiary_IdOrderByChecklist_Timeline_Item_IdAsc(diary.getId())
                 .stream()
                 .map(todo -> {
-                    PlanItem item = todo.getTimeline().getItem();
+                    DailyChecklist checklist = todo.getChecklist();
+                    PlanItem item = checklist.getTimeline().getItem();
 
                     return DiaryTodoResponseDto.builder()
+                            .checklistId(checklist.getId())
                             .category(item.getCategory())
                             .categoryName(item.getCategory().getDisplayName())
-                            .name(item.getName())
+                            .content(checklist.getContent())
                             .done(todo.getDone())
                             .build();
                 })

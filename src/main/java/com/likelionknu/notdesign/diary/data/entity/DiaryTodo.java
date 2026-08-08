@@ -1,6 +1,5 @@
 package com.likelionknu.notdesign.diary.data.entity;
 
-import com.likelionknu.notdesign.plan.data.entity.PlanTimeline;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -20,8 +19,8 @@ public class DiaryTodo {
     private Diary diary;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "timeline_id", nullable = false)
-    private PlanTimeline timeline;
+    @JoinColumn(name = "checklist_id", nullable = false)
+    private DailyChecklist checklist;
 
     @Builder.Default
     @Column(nullable = false)
