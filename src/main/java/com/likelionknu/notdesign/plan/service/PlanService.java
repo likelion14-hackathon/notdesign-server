@@ -1,7 +1,9 @@
 package com.likelionknu.notdesign.plan.service;
 
+import com.likelionknu.notdesign.diary.data.repository.DiaryRepository;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailItemResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanStatsResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanSummaryResponseDto;
 import com.likelionknu.notdesign.plan.data.entity.Plan;
 import com.likelionknu.notdesign.plan.data.entity.PlanItem;
@@ -40,6 +42,7 @@ public class PlanService {
     private final PlanTimelineRepository planTimelineRepository;
     private final PlanTimelineWeekRepository planTimelineWeekRepository;
     private final ResultRepository resultRepository;
+    private final DiaryRepository diaryRepository;
 
     /**
      * 홈 화면에서 현재 진행 중인 플랜의 진행 요약을 조회합니다.
@@ -49,32 +52,20 @@ public class PlanService {
      */
     @Transactional(readOnly = true)
     public PlanSummaryResponseDto getCurrentPlanSummary(String email) {
-        User user = userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
-
-        PlanProcess process = planProcessRepository.findByUser_IdAndCompletedAtIsNull(user.getId())
-                .orElseThrow(() -> new PlanProcessNotFoundException(user.getId()));
-
-        Plan plan = process.getPlan();
-        int totalWeeks = plan.getDurationWeeks();
-        long totalDays = (long) totalWeeks * DAYS_PER_WEEK;
+        PlanProcess process = getCurrentProcess(email);
+        Progress progress = computeProgress(process);
 
         LocalDate today = LocalDate.now(KST);
         LocalDate startedAt = process.getStartedAt();
 
-        // 시작 전이면 0일, 전체 기간을 넘겼으면 전체 일수로 고정
-        long elapsedDays = Math.max(0, Math.min(ChronoUnit.DAYS.between(startedAt, today), totalDays));
-
-        int currentWeek = Math.min((int) (elapsedDays / DAYS_PER_WEEK) + 1, totalWeeks);
-        int progressRate = (int) Math.round(elapsedDays * 100.0 / totalDays);
-
         // 중간=시작+6주, 최종=시작+12주 시점 (report/result 측정일 더미데이터로 검증)
         int daysToMidReport = daysUntil(today, startedAt.plusWeeks(MID_REPORT_WEEK));
-        int daysToFinalReport = daysUntil(today, startedAt.plusWeeks(totalWeeks));
+        int daysToFinalReport = daysUntil(today, startedAt.plusWeeks(progress.totalWeeks()));
 
         return PlanSummaryResponseDto.builder()
-                .currentWeek(currentWeek)
-                .totalWeeks(totalWeeks)
-                .progressRate(progressRate)
+                .currentWeek(progress.currentWeek())
+                .totalWeeks(progress.totalWeeks())
+                .progressRate(progress.progressRate())
                 .daysToMidReport(daysToMidReport)
                 .daysToFinalReport(daysToFinalReport)
                 .build();
@@ -121,6 +112,49 @@ public class PlanService {
                 .build();
     }
 
+    /**
+     * 마이 화면에서 현재 진행 중인 플랜의 기록 통계를 조회합니다.
+     *
+     * @param email 조회 대상 사용자
+     * @return 진행 주차·진행률·경과일과 남긴 하루 기록 수
+     */
+    @Transactional(readOnly = true)
+    public PlanStatsResponseDto getCurrentPlanStats(String email) {
+        PlanProcess process = getCurrentProcess(email);
+        Progress progress = computeProgress(process);
+
+        int recordedDays = (int) diaryRepository.countByProcess_Id(process.getId());
+
+        return PlanStatsResponseDto.builder()
+                .currentWeek(progress.currentWeek())
+                .totalWeeks(progress.totalWeeks())
+                .progressRate(progress.progressRate())
+                .elapsedDays(progress.elapsedDays())
+                .recordedDays(recordedDays)
+                .build();
+    }
+
+    private PlanProcess getCurrentProcess(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
+
+        return planProcessRepository.findByUser_IdAndCompletedAtIsNull(user.getId())
+                .orElseThrow(() -> new PlanProcessNotFoundException(user.getId()));
+    }
+
+    private Progress computeProgress(PlanProcess process) {
+        int totalWeeks = process.getPlan().getDurationWeeks();
+        long totalDays = (long) totalWeeks * DAYS_PER_WEEK;
+
+        LocalDate today = LocalDate.now(KST);
+        // 시작 전이면 0일, 전체 기간을 넘겼으면 전체 일수로 고정
+        long elapsedDays = Math.max(0, Math.min(ChronoUnit.DAYS.between(process.getStartedAt(), today), totalDays));
+
+        int currentWeek = Math.min((int) (elapsedDays / DAYS_PER_WEEK) + 1, totalWeeks);
+        int progressRate = (int) Math.round(elapsedDays * 100.0 / totalDays);
+
+        return new Progress(currentWeek, totalWeeks, progressRate, (int) elapsedDays);
+    }
+
     private Map<Long, List<Integer>> groupWeeksByTimeline(List<PlanTimeline> timelines) {
         List<Long> timelineIds = timelines.stream().map(PlanTimeline::getId).toList();
 
@@ -146,5 +180,8 @@ public class PlanService {
 
     private int daysUntil(LocalDate today, LocalDate target) {
         return (int) Math.max(0, ChronoUnit.DAYS.between(today, target));
+    }
+
+    private record Progress(int currentWeek, int totalWeeks, int progressRate, int elapsedDays) {
     }
 }

@@ -8,4 +8,6 @@ import java.util.List;
 public interface DiaryRepository extends JpaRepository<Diary, Long> {
     List<Diary> findAllByProcess_User_IdAndRecordedAtBetweenOrderByRecordedAtDesc(
             Long userId, LocalDateTime startDate, LocalDateTime endDate);
+
+    long countByProcess_Id(Long processId);
 }

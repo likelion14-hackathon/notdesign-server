@@ -3,6 +3,7 @@ package com.likelionknu.notdesign.plan.controller;
 import com.likelionknu.notdesign.common.response.GlobalResponse;
 import com.likelionknu.notdesign.common.security.SecurityUtil;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanStatsResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanSummaryResponseDto;
 import com.likelionknu.notdesign.plan.service.PlanService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,5 +28,11 @@ public class PlanController {
     @Operation(summary = "현재 플랜 상세 조회")
     public GlobalResponse<PlanDetailResponseDto> getCurrentPlanDetail() {
         return GlobalResponse.ok(planService.getCurrentPlanDetail(SecurityUtil.getUsername()));
+    }
+
+    @GetMapping("/current/stats")
+    @Operation(summary = "현재 플랜 기록 통계 조회")
+    public GlobalResponse<PlanStatsResponseDto> getCurrentPlanStats() {
+        return GlobalResponse.ok(planService.getCurrentPlanStats(SecurityUtil.getUsername()));
     }
 }
