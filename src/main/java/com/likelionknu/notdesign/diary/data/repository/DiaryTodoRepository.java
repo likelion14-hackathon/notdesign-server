@@ -6,6 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface DiaryTodoRepository extends JpaRepository<DiaryTodo, Long> {
-    @EntityGraph(attributePaths = {"timeline", "timeline.item"})
-    List<DiaryTodo> findAllByDiary_IdOrderByTimeline_Item_IdAsc(Long diaryId);
+    @EntityGraph(attributePaths = {"checklist", "checklist.timeline", "checklist.timeline.item"})
+    List<DiaryTodo> findAllByDiary_IdOrderByChecklist_Timeline_Item_IdAsc(Long diaryId);
 }
