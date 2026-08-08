@@ -1,10 +1,18 @@
 package com.likelionknu.notdesign.plan.service;
 
+import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailItemResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanSummaryResponseDto;
 import com.likelionknu.notdesign.plan.data.entity.Plan;
+import com.likelionknu.notdesign.plan.data.entity.PlanItem;
 import com.likelionknu.notdesign.plan.data.entity.PlanProcess;
+import com.likelionknu.notdesign.plan.data.entity.PlanTimeline;
+import com.likelionknu.notdesign.plan.data.entity.PlanTimelineWeek;
 import com.likelionknu.notdesign.plan.data.repository.PlanProcessRepository;
+import com.likelionknu.notdesign.plan.data.repository.PlanTimelineRepository;
+import com.likelionknu.notdesign.plan.data.repository.PlanTimelineWeekRepository;
 import com.likelionknu.notdesign.plan.exception.PlanProcessNotFoundException;
+import com.likelionknu.notdesign.result.data.repository.ResultRepository;
 import com.likelionknu.notdesign.user.data.entity.User;
 import com.likelionknu.notdesign.user.data.exception.UserNotFoundException;
 import com.likelionknu.notdesign.user.data.repository.UserRepository;
@@ -15,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -26,6 +37,9 @@ public class PlanService {
 
     private final UserRepository userRepository;
     private final PlanProcessRepository planProcessRepository;
+    private final PlanTimelineRepository planTimelineRepository;
+    private final PlanTimelineWeekRepository planTimelineWeekRepository;
+    private final ResultRepository resultRepository;
 
     /**
      * 홈 화면에서 현재 진행 중인 플랜의 진행 요약을 조회합니다.
@@ -63,6 +77,70 @@ public class PlanService {
                 .progressRate(progressRate)
                 .daysToMidReport(daysToMidReport)
                 .daysToFinalReport(daysToFinalReport)
+                .build();
+    }
+
+    /**
+     * 플랜 상세 화면에서 현재 진행 중인 플랜의 진단 지표, 예상 비용, 관리 항목을 조회합니다.
+     *
+     * @param email 조회 대상 사용자
+     * @return 최근 측정 지표, 총 예상 비용, 카테고리별 관리 항목(주차·이유 포함)
+     */
+    @Transactional(readOnly = true)
+    public PlanDetailResponseDto getCurrentPlanDetail(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
+
+        PlanProcess process = planProcessRepository.findByUser_IdAndCompletedAtIsNull(user.getId())
+                .orElseThrow(() -> new PlanProcessNotFoundException(user.getId()));
+
+        Plan plan = process.getPlan();
+
+        // 최근 측정 결과 (측정 이력이 없으면 지표 없음)
+        PlanDetailResponseDto.Metrics metrics = resultRepository.findAllByUserOrderByMeasuredAtDesc(user)
+                .stream().findFirst()
+                .map(result -> PlanDetailResponseDto.Metrics.builder()
+                        .pigmentation(result.getPigmentation())
+                        .hydration(result.getHydration())
+                        .erythema(result.getErythema())
+                        .build())
+                .orElse(null);
+
+        // 플랜에 속한 관리 항목(타임라인)과 각 항목의 진행 주차
+        List<PlanTimeline> timelines = planTimelineRepository.findAllByPlan_IdOrderByItem_IdAsc(plan.getId());
+        Map<Long, List<Integer>> weeksByTimeline = groupWeeksByTimeline(timelines);
+
+        List<PlanDetailItemResponseDto> items = timelines.stream()
+                .map(timeline -> toItem(timeline, weeksByTimeline))
+                .toList();
+
+        return PlanDetailResponseDto.builder()
+                .planSummary(plan.getSummary())
+                .totalPrice(plan.getTotalPrice())
+                .metrics(metrics)
+                .items(items)
+                .build();
+    }
+
+    private Map<Long, List<Integer>> groupWeeksByTimeline(List<PlanTimeline> timelines) {
+        List<Long> timelineIds = timelines.stream().map(PlanTimeline::getId).toList();
+
+        return planTimelineWeekRepository.findAllByTimeline_IdInOrderByWeekAsc(timelineIds).stream()
+                .collect(Collectors.groupingBy(
+                        week -> week.getTimeline().getId(),
+                        Collectors.mapping(PlanTimelineWeek::getWeek, Collectors.toList())));
+    }
+
+    private PlanDetailItemResponseDto toItem(PlanTimeline timeline, Map<Long, List<Integer>> weeksByTimeline) {
+        PlanItem item = timeline.getItem();
+
+        return PlanDetailItemResponseDto.builder()
+                .category(item.getCategory())
+                .categoryName(item.getCategory().getDisplayName())
+                .name(item.getName())
+                .frequency(item.getFrequency())
+                .price(item.getPrice())
+                .weeks(weeksByTimeline.getOrDefault(timeline.getId(), List.of()))
+                .reason(timeline.getReason())
                 .build();
     }
 
