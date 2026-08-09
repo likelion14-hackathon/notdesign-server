@@ -9,4 +9,6 @@ import java.util.Optional;
 
 public interface ResultDummyRepository extends JpaRepository<ResultDummy, Long> {
     Optional<ResultDummy> findFirstByUserAndClinicOrderByMeasuredAtDesc(User user, Clinic clinic);
+
+    Optional<ResultDummy> findFirstByUserOrderByMeasuredAtDesc(User user);
 }
