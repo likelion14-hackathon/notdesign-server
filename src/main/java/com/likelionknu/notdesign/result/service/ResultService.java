@@ -2,7 +2,6 @@ package com.likelionknu.notdesign.result.service;
 
 import com.likelionknu.notdesign.clinic.data.entity.Clinic;
 import com.likelionknu.notdesign.clinic.data.repository.ClinicRepository;
-import com.likelionknu.notdesign.result.data.dto.request.ResultCreateRequestDto;
 import com.likelionknu.notdesign.result.data.dto.response.ResultResponseDto;
 import com.likelionknu.notdesign.result.data.entity.Result;
 import com.likelionknu.notdesign.result.data.entity.ResultDummy;
@@ -30,12 +29,12 @@ public class ResultService {
     /**
      * 측정 결과를 생성합니다. 사용자의 최신 더미 측정값(result_dummy)을 실제 결과(result)로 복사합니다.
      *
-     * @param email   조회 대상 사용자 이메일
-     * @param request 연결할 클리닉 정보(선택)
+     * @param email    조회 대상 사용자 이메일
+     * @param clinicId 연결할 클리닉 ID(선택)
      * @return 생성된 측정 결과
      */
     @Transactional
-    public ResultResponseDto createResult(String email, ResultCreateRequestDto request) {
+    public ResultResponseDto createResult(String email, Long clinicId) {
         User user = getUser(email);
 
         // 클리닉 방문 측정을 시뮬레이션하기 위해 준비된 더미 측정값을 가져온다.
@@ -46,7 +45,7 @@ public class ResultService {
                     return new ResultNotFoundException();
                 });
 
-        Clinic clinic = resolveClinic(request, dummy);
+        Clinic clinic = resolveClinic(clinicId, dummy);
 
         Result result = Result.builder()
                 .user(user)
@@ -95,12 +94,12 @@ public class ResultService {
         return ResultResponseDto.from(result);
     }
 
-    // 요청에 clinicId가 있으면 해당 클리닉, 없으면 더미에 기록된 클리닉(없을 수 있음)을 사용
-    private Clinic resolveClinic(ResultCreateRequestDto request, ResultDummy dummy) {
-        if (request != null && request.getClinicId() != null) {
-            return clinicRepository.findById(request.getClinicId())
+    // clinicId가 있으면 해당 클리닉, 없으면 더미에 기록된 클리닉(없을 수 있음)을 사용
+    private Clinic resolveClinic(Long clinicId, ResultDummy dummy) {
+        if (clinicId != null) {
+            return clinicRepository.findById(clinicId)
                     .orElseThrow(() -> {
-                        log.error("[createResult] 클리닉 조회 실패: clinicId={}", request.getClinicId());
+                        log.error("[createResult] 클리닉 조회 실패: clinicId={}", clinicId);
                         return new ResultNotFoundException();
                     });
         }
