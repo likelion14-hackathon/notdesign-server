@@ -70,6 +70,10 @@ public class User implements UserDetails {
         this.measurementAgreedAt = LocalDateTime.now();
     }
 
+    public void updateProfile(String name) {
+        this.name = name;
+    }
+
     @Override
     public String getUsername() {
         return email;
