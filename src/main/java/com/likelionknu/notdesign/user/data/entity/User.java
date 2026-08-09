@@ -70,12 +70,6 @@ public class User implements UserDetails {
         this.measurementAgreedAt = LocalDateTime.now();
     }
 
-    /**
-     * 소셜 로그인 시 최신 프로필(닉네임)로 갱신한다.
-     * 카카오 등 외부 계정의 닉네임은 변경될 수 있으므로 로그인마다 최신값으로 맞춘다.
-     *
-     * @param name 최신 닉네임
-     */
     public void updateProfile(String name) {
         this.name = name;
     }

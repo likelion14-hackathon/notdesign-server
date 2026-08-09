@@ -19,10 +19,9 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
-# 카카오 소셜 로그인 설정.
-# 발급받은 REST API 키와 앱에 등록한 redirect-uri 를 환경변수 또는 아래 기본값에 채워야 동작한다.
-# (client-secret 은 사용하지 않으면 비워둔다.)
 kakao:
   client-id: ${KAKAO_CLIENT_ID:}
   client-secret: ${KAKAO_CLIENT_SECRET:}
   redirect-uri: ${KAKAO_REDIRECT_URI:}
+  token-uri: ${KAKAO_TOKEN_URI:https://kauth.kakao.com/oauth/token}
+  user-info-uri: ${KAKAO_USER_INFO_URI:https://kapi.kakao.com/v2/user/me}
