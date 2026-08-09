@@ -12,6 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ClinicService {
     private final ClinicRepository clinicRepository;
 
+    /**
+     * 제휴 클리닉 전체 목록을 조회합니다.
+     *
+     * @return 클리닉 목록
+     */
     @Transactional(readOnly = true)
     public List<ClinicResponseDto> getClinics() {
         return clinicRepository.findAll().stream()
