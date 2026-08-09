@@ -46,10 +46,7 @@ public class KakaoOAuthClient {
         body.add("client_id", clientId);
         body.add("redirect_uri", redirectUri);
         body.add("code", code);
-        // client_secret은 카카오 앱에서 활성화한 경우에만 전송한다.
-        if (clientSecret != null && !clientSecret.isBlank()) {
-            body.add("client_secret", clientSecret);
-        }
+        body.add("client_secret", clientSecret);
 
         try {
             KakaoTokenResponse response = restClient.post()
