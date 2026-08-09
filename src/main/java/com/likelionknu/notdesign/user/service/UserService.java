@@ -15,6 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
     private final UserRepository userRepository;
 
+    /**
+     * 현재 로그인 사용자의 측정 동의 시각을 기록합니다.
+     *
+     * @param email 조회 대상 사용자 이메일
+     * @return 갱신된 사용자 정보
+     */
     @Transactional
     public UserResponseDto agreeMeasurement(String email) {
         User user = userRepository.findByEmail(email)
