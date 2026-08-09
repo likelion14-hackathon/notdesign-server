@@ -34,6 +34,7 @@ public class KakaoOAuthClient {
     @Value("${kakao.user-info-uri}")
     private String userInfoUri;
 
+    /** 인가 코드로 토큰 교환 후 사용자 정보 조회 */
     public KakaoUserInfo getUserInfo(String code) {
         String kakaoAccessToken = requestAccessToken(code);
         return requestUserInfo(kakaoAccessToken);
@@ -45,6 +46,7 @@ public class KakaoOAuthClient {
         body.add("client_id", clientId);
         body.add("redirect_uri", redirectUri);
         body.add("code", code);
+        // client_secret은 카카오 앱에서 활성화한 경우에만 전송한다.
         if (clientSecret != null && !clientSecret.isBlank()) {
             body.add("client_secret", clientSecret);
         }

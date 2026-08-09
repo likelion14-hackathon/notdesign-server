@@ -38,7 +38,6 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public User getUserEntity(String email) {
-        log.info("[getUserEntity] 사용자 조회 시도: {}", email);
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.error("[getUserEntity] 사용자 조회 실패: {}", email);
@@ -46,20 +45,7 @@ public class AuthService {
                 });
     }
 
-    private void validatePassword(String originalPassword, String password) {
-        if(!passwordEncoder.matches(originalPassword, password)) {
-            throw new PasswordInvalidException();
-        }
-    }
-
-    private Authentication createAuthentication(User user) {
-        List<SimpleGrantedAuthority> authorities = Collections.singletonList(
-                new SimpleGrantedAuthority(user.getRole().getValue())
-        );
-
-        return new UsernamePasswordAuthenticationToken(user.getEmail(), null, authorities);
-    }
-
+    /** 이메일 회원가입 후 서비스 토큰 발급 */
     @Transactional
     public TokenResponseDto signUp(SignUpRequestDto signUpRequestDto) {
         User user = User.builder()
@@ -70,34 +56,22 @@ public class AuthService {
 
         try {
             userRepository.save(user);
-            log.info("[signUp] 새로운 사용자 등록: {}", user.getEmail());
         } catch (DataIntegrityViolationException e) {
             log.error("[signUp] 중복된 이메일 주소로 인한 가입 거부: {}", signUpRequestDto.getEmail());
             throw new EmailDuplicationException();
         }
 
-        Authentication authentication = createAuthentication(user);
-        AuthenticationToken authenticationToken = tokenProvider.generateToken(authentication);
-
-        return TokenResponseDto.builder()
-                .accessToken(authenticationToken.getAccessToken())
-                .refreshToken(authenticationToken.getRefreshToken())
-                .build();
+        return issueToken(user);
     }
 
+    /** 이메일/비밀번호 검증 후 서비스 토큰 발급 */
     public TokenResponseDto signIn(SignInRequestDto signInRequestDto) {
         User user = getUserEntity(signInRequestDto.getEmail());
         validatePassword(signInRequestDto.getPassword(), user.getPassword());
-
-        Authentication authentication = createAuthentication(user);
-        AuthenticationToken authenticationToken = tokenProvider.generateToken(authentication);
-
-        return TokenResponseDto.builder()
-                .accessToken(authenticationToken.getAccessToken())
-                .refreshToken(authenticationToken.getRefreshToken())
-                .build();
+        return issueToken(user);
     }
 
+    /** 카카오 인가 코드로 로그인 (기존 회원은 프로필 갱신, 없으면 신규 가입) */
     @Transactional
     public TokenResponseDto kakaoLogin(KakaoLoginRequestDto kakaoLoginRequestDto) {
         KakaoUserInfo userInfo = kakaoOAuthClient.getUserInfo(kakaoLoginRequestDto.getCode());
@@ -107,16 +81,20 @@ public class AuthService {
                 .map(existing -> updateKakaoUser(existing, userInfo))
                 .orElseGet(() -> registerKakaoUser(userInfo));
 
-        Authentication authentication = createAuthentication(user);
-        AuthenticationToken authenticationToken = tokenProvider.generateToken(authentication);
+        return issueToken(user);
+    }
 
-        return TokenResponseDto.builder()
-                .accessToken(authenticationToken.getAccessToken())
-                .refreshToken(authenticationToken.getRefreshToken())
-                .build();
+    /** 리프레시 토큰 삭제 + 액세스 토큰 블랙리스트 등록 */
+    @Transactional
+    public void logout(String email, String bearerToken) {
+        String accessToken = tokenProvider.resolveBearer(bearerToken);
+
+        redisService.deleteValues(email);
+        tokenProvider.blacklistAccessToken(accessToken);
     }
 
     private User registerKakaoUser(KakaoUserInfo userInfo) {
+        // 이메일/닉네임 동의를 못 받으면 대체값 사용
         String email = (userInfo.email() != null && !userInfo.email().isBlank())
                 ? userInfo.email()
                 : "kakao_" + userInfo.id() + "@social.local";
@@ -131,25 +109,36 @@ public class AuthService {
                 .providerId(String.valueOf(userInfo.id()))
                 .build();
 
-        log.info("[registerKakaoUser] 카카오 신규 회원 등록: providerId={}", userInfo.id());
         return userRepository.save(user);
     }
 
     private User updateKakaoUser(User user, KakaoUserInfo userInfo) {
+        // 닉네임은 변경될 수 있어 로그인마다 최신값으로 갱신 (미동의 시 기존 값 유지)
         if (userInfo.nickname() != null && !userInfo.nickname().isBlank()) {
             user.updateProfile(userInfo.nickname());
-            log.info("[updateKakaoUser] 카카오 회원 프로필 갱신: providerId={}", userInfo.id());
         }
         return user;
     }
 
-    @Transactional
-    public void logout(String email, String bearerToken) {
-        String accessToken = tokenProvider.resolveBearer(bearerToken);
+    private TokenResponseDto issueToken(User user) {
+        Authentication authentication = createAuthentication(user);
+        AuthenticationToken token = tokenProvider.generateToken(authentication);
+        return TokenResponseDto.builder()
+                .accessToken(token.getAccessToken())
+                .refreshToken(token.getRefreshToken())
+                .build();
+    }
 
-        redisService.deleteValues(email);
-        tokenProvider.blacklistAccessToken(accessToken);
+    private void validatePassword(String originalPassword, String password) {
+        if (!passwordEncoder.matches(originalPassword, password)) {
+            throw new PasswordInvalidException();
+        }
+    }
 
-        log.info("[logout] 로그아웃 처리 완료: {}", email);
+    private Authentication createAuthentication(User user) {
+        List<SimpleGrantedAuthority> authorities = Collections.singletonList(
+                new SimpleGrantedAuthority(user.getRole().getValue())
+        );
+        return new UsernamePasswordAuthenticationToken(user.getEmail(), null, authorities);
     }
 }
