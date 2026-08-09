@@ -22,6 +22,11 @@ jwt:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
 
+kakao:
+  client-id: ${KAKAO_CLIENT_ID:}
+  client-secret: ${KAKAO_CLIENT_SECRET:}
+  redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/login/oauth2/code/kakao}
+
 logging:
   level:
     com.likelionknu.notdesign: DEBUG
