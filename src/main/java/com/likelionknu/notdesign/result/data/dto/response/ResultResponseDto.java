@@ -7,10 +7,6 @@ import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Getter;
 
-/**
- * 측정 결과 응답 DTO.
- * 색소침착/홍조/수분 지표와 측정 시각, 연관 클리닉/플랜 정보를 전달한다.
- */
 @Getter
 @Builder
 public class ResultResponseDto {
@@ -24,12 +20,6 @@ public class ResultResponseDto {
     private final LocalDateTime measuredAt;
     private final LocalDateTime createdAt;
 
-    /**
-     * 엔티티로부터 응답 DTO를 생성한다.
-     *
-     * @param result 측정 결과 엔티티
-     * @return 변환된 응답 DTO
-     */
     public static ResultResponseDto from(Result result) {
         Clinic clinic = result.getClinic();
         Plan plan = result.getPlan();
