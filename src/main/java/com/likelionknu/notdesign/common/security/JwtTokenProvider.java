@@ -32,6 +32,9 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 public class JwtTokenProvider {
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String BLACKLIST_PREFIX = "blacklist:";
+
     private final SecretKey key;
     private final RedisService redisService;
     private final UserRepository userRepository;
@@ -141,5 +144,51 @@ public class JwtTokenProvider {
             log.warn("[validateToken] JWT가 제출되지 않음: {}", e.getMessage());
         }
         return false;
+    }
+
+    /**
+     * "Bearer " 접두사를 제거해 순수 토큰 문자열을 반환한다.
+     *
+     * @param bearerToken Authorization 헤더 값
+     * @return 접두사를 제거한 토큰(접두사가 없으면 입력값 그대로)
+     */
+    public String resolveBearer(String bearerToken) {
+        if (bearerToken != null && bearerToken.startsWith(BEARER_PREFIX)) {
+            return bearerToken.substring(BEARER_PREFIX.length());
+        }
+        return bearerToken;
+    }
+
+    /**
+     * 로그아웃 시 액세스 토큰을 남은 만료 시간만큼 블랙리스트에 등록한다.
+     *
+     * @param accessToken 무효화할 액세스 토큰
+     */
+    public void blacklistAccessToken(String accessToken) {
+        long remaining = getRemainingExpiration(accessToken);
+        if (remaining > 0) {
+            redisService.setValues(BLACKLIST_PREFIX + accessToken, "logout", Duration.ofMillis(remaining));
+        }
+    }
+
+    /**
+     * 액세스 토큰이 블랙리스트(로그아웃 처리)에 등록되어 있는지 확인한다.
+     *
+     * @param accessToken 검사할 액세스 토큰
+     * @return 블랙리스트에 있으면 true
+     */
+    public boolean isBlacklisted(String accessToken) {
+        return redisService.getValues(BLACKLIST_PREFIX + accessToken) != null;
+    }
+
+    /**
+     * 토큰의 남은 만료 시간(밀리초)을 계산한다.
+     *
+     * @param accessToken 대상 토큰
+     * @return 남은 시간(ms). 이미 만료되었으면 0 이하
+     */
+    private long getRemainingExpiration(String accessToken) {
+        Date expiration = parseClaims(accessToken).getExpiration();
+        return expiration.getTime() - System.currentTimeMillis();
     }
 }

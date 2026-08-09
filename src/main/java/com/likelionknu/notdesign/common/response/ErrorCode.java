@@ -9,6 +9,7 @@ public enum ErrorCode {
     VERIFICATION_INVALID("C4011", "인증 정보가 유효하지 않습니다.", 401),
     PASSWORD_INVALID("C4012", "비밀번호가 일치하지 않습니다.", 401),
     TOKEN_INVALID("C4013", "유효하지 않은 토큰입니다.", 401),
+    SOCIAL_LOGIN_FAILED("C4014", "소셜 로그인에 실패했습니다.", 401),
     ACCESS_DENIED("C403", "승인되지 않은 사용자입니다.", 403),
     USER_DATA_NOT_FOUND("C4041", "사용자를 찾을 수 없습니다.", 404),
     DATA_NOT_FOUND("C404", "정보를 불러올 수 없습니다.", 404),
