@@ -20,12 +20,12 @@ public class ReportController {
     @GetMapping("/latest")
     @Operation(summary = "최근 리포트 조회")
     public GlobalResponse<ReportResponseDto> getLatestReport() {
-        return GlobalResponse.ok(reportService.getLatestReport("test@gmail.com"));
+        return GlobalResponse.ok(reportService.getLatestReport(SecurityUtil.getUsername()));
     }
 
     @GetMapping("/{reportId}")
     @Operation(summary = "리포트 조회")
     public GlobalResponse<ReportResponseDto> getReport(@PathVariable Long reportId) {
-        return GlobalResponse.ok(reportService.getReport("test@gmail.com", reportId));
+        return GlobalResponse.ok(reportService.getReport(SecurityUtil.getUsername(), reportId));
     }
 }
