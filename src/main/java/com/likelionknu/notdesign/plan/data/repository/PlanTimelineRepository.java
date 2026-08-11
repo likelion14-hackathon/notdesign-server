@@ -8,4 +8,6 @@ import java.util.List;
 public interface PlanTimelineRepository extends JpaRepository<PlanTimeline, Long> {
     @EntityGraph(attributePaths = "item")
     List<PlanTimeline> findAllByPlan_IdOrderByItem_IdAsc(Long planId);
+
+    void deleteByPlan_Id(Long planId);
 }
