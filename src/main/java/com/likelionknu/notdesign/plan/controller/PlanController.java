@@ -10,6 +10,7 @@ import com.likelionknu.notdesign.plan.data.dto.response.PlanTodoResponseDto;
 import com.likelionknu.notdesign.plan.service.PlanService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,5 +52,12 @@ public class PlanController {
     @Operation(summary = "플랜 시작")
     public GlobalResponse<PlanStartResponseDto> startPlan(@PathVariable Long planId) {
         return GlobalResponse.ok(planService.startPlan(SecurityUtil.getUsername(), planId));
+    }
+
+    @DeleteMapping("/{planId}")
+    @Operation(summary = "플랜 삭제")
+    public GlobalResponse<Void> deletePlan(@PathVariable Long planId) {
+        planService.deletePlan(planId);
+        return GlobalResponse.ok();
     }
 }

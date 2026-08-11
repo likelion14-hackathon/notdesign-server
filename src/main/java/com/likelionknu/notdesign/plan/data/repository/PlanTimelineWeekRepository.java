@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface PlanTimelineWeekRepository extends JpaRepository<PlanTimelineWeek, Long> {
     List<PlanTimelineWeek> findAllByTimeline_IdInOrderByWeekAsc(List<Long> timelineIds);
+
+    void deleteByTimeline_IdIn(List<Long> timelineIds);
 }

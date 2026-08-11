@@ -19,6 +19,7 @@ import com.likelionknu.notdesign.plan.data.repository.PlanRepository;
 import com.likelionknu.notdesign.plan.data.repository.PlanTimelineRepository;
 import com.likelionknu.notdesign.plan.data.repository.PlanTimelineWeekRepository;
 import com.likelionknu.notdesign.plan.exception.PlanAlreadyInProgressException;
+import com.likelionknu.notdesign.plan.exception.PlanAlreadyStartedException;
 import com.likelionknu.notdesign.plan.exception.PlanNotFoundException;
 import com.likelionknu.notdesign.plan.exception.PlanProcessNotFoundException;
 import com.likelionknu.notdesign.result.data.repository.ResultRepository;
@@ -192,6 +193,32 @@ public class PlanService {
                 .processId(process.getId())
                 .startedAt(process.getStartedAt())
                 .build();
+    }
+
+    /**
+     * 아직 시작하지 않은 플랜을 삭제합니다. (플랜 생성 후 뒤로가기)
+     *
+     * @param planId 삭제할 플랜 ID
+     * @throws PlanNotFoundException       플랜을 찾을 수 없는 경우
+     * @throws PlanAlreadyStartedException 이미 시작(진행)에 연결된 플랜인 경우
+     */
+    @Transactional
+    public void deletePlan(Long planId) {
+        Plan plan = planRepository.findById(planId).orElseThrow(() -> new PlanNotFoundException(planId));
+
+        // 이미 진행(PlanProcess)에 연결된 플랜은 삭제 불가
+        if (planProcessRepository.existsByPlan_Id(planId)) {
+            throw new PlanAlreadyStartedException(planId);
+        }
+
+        // 자식(주차 → 타임라인)부터 삭제 후 플랜 삭제 (plan_items 공유 카탈로그는 보존)
+        List<Long> timelineIds = planTimelineRepository.findAllByPlan_IdOrderByItem_IdAsc(planId)
+                .stream().map(PlanTimeline::getId).toList();
+        if (!timelineIds.isEmpty()) {
+            planTimelineWeekRepository.deleteByTimeline_IdIn(timelineIds);
+        }
+        planTimelineRepository.deleteByPlan_Id(planId);
+        planRepository.delete(plan);
     }
 
     private PlanProcess getCurrentProcess(String email) {
