@@ -6,6 +6,7 @@ import com.likelionknu.notdesign.diary.data.repository.DiaryRepository;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailItemResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanStatsResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanStartResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanSummaryResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanTodoResponseDto;
 import com.likelionknu.notdesign.plan.data.entity.Plan;
@@ -14,8 +15,11 @@ import com.likelionknu.notdesign.plan.data.entity.PlanProcess;
 import com.likelionknu.notdesign.plan.data.entity.PlanTimeline;
 import com.likelionknu.notdesign.plan.data.entity.PlanTimelineWeek;
 import com.likelionknu.notdesign.plan.data.repository.PlanProcessRepository;
+import com.likelionknu.notdesign.plan.data.repository.PlanRepository;
 import com.likelionknu.notdesign.plan.data.repository.PlanTimelineRepository;
 import com.likelionknu.notdesign.plan.data.repository.PlanTimelineWeekRepository;
+import com.likelionknu.notdesign.plan.exception.PlanAlreadyInProgressException;
+import com.likelionknu.notdesign.plan.exception.PlanNotFoundException;
 import com.likelionknu.notdesign.plan.exception.PlanProcessNotFoundException;
 import com.likelionknu.notdesign.result.data.repository.ResultRepository;
 import com.likelionknu.notdesign.user.data.entity.User;
@@ -41,6 +45,7 @@ public class PlanService {
     private static final int MID_REPORT_WEEK = 6;
 
     private final UserRepository userRepository;
+    private final PlanRepository planRepository;
     private final PlanProcessRepository planProcessRepository;
     private final PlanTimelineRepository planTimelineRepository;
     private final PlanTimelineWeekRepository planTimelineWeekRepository;
@@ -154,6 +159,39 @@ public class PlanService {
                 .stream()
                 .map(this::toTodo)
                 .toList();
+    }
+
+    /**
+     * 생성된 플랜을 현재 사용자의 진행 중 플랜으로 시작합니다.
+     *
+     * @param email  시작을 요청한 사용자
+     * @param planId 시작할 플랜 ID
+     * @return 생성된 진행(PlanProcess) ID와 시작일
+     * @throws PlanAlreadyInProgressException 이미 진행 중인 플랜이 있는 경우
+     * @throws PlanNotFoundException          플랜을 찾을 수 없는 경우
+     */
+    @Transactional
+    public PlanStartResponseDto startPlan(String email, Long planId) {
+        User user = userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
+
+        // 진행 중 플랜은 사용자당 하나만 허용 (현재 플랜 조회 API가 단일 조회 전제)
+        if (planProcessRepository.existsByUser_IdAndCompletedAtIsNull(user.getId())) {
+            throw new PlanAlreadyInProgressException(user.getId());
+        }
+
+        Plan plan = planRepository.findById(planId).orElseThrow(() -> new PlanNotFoundException(planId));
+
+        PlanProcess process = PlanProcess.builder()
+                .plan(plan)
+                .user(user)
+                .startedAt(LocalDate.now(KST))
+                .build();
+        planProcessRepository.save(process);
+
+        return PlanStartResponseDto.builder()
+                .processId(process.getId())
+                .startedAt(process.getStartedAt())
+                .build();
     }
 
     private PlanProcess getCurrentProcess(String email) {
