@@ -4,6 +4,7 @@ import com.likelionknu.notdesign.diary.data.entity.DailyChecklist;
 import com.likelionknu.notdesign.diary.data.repository.DailyChecklistRepository;
 import com.likelionknu.notdesign.diary.data.repository.DiaryRepository;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailItemResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanAdjustResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanStatsResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanStartResponseDto;
@@ -95,7 +96,7 @@ public class PlanService {
         PlanProcess process = planProcessRepository.findByUser_IdAndCompletedAtIsNull(user.getId())
                 .orElseThrow(() -> new PlanProcessNotFoundException(user.getId()));
 
-        Plan plan = process.getPlan();
+        Plan plan = process.getActivePlan();
 
         // 최근 측정 결과 (측정 이력이 없으면 지표 없음)
         PlanDetailResponseDto.Metrics metrics = resultRepository.findAllByUserOrderByMeasuredAtDesc(user)
@@ -197,6 +198,28 @@ public class PlanService {
     }
 
     /**
+     * 중간 리포트에서 새로 생성한 플랜을 현재 사이클에 적용합니다.
+     *
+     * @param email 적용을 요청한 사용자
+     * @param planId 적용할 조정 플랜 ID
+     * @return 적용된 플랜 ID와 현재 주차
+     * @throws PlanProcessNotFoundException 진행 중인 사이클이 없는 경우
+     * @throws PlanNotFoundException 플랜을 찾을 수 없는 경우
+     */
+    @Transactional
+    public PlanAdjustResponseDto applyAdjustedPlan(String email, Long planId) {
+        PlanProcess process = getCurrentProcess(email);
+        Plan adjustedPlan = planRepository.findById(planId).orElseThrow(() -> new PlanNotFoundException(planId));
+
+        process.applyFuturePlan(adjustedPlan);
+
+        return PlanAdjustResponseDto.builder()
+                .planId(adjustedPlan.getId())
+                .currentWeek(computeProgress(process).currentWeek())
+                .build();
+    }
+
+    /**
      * 12주를 마친 사이클을 종료하고, 다음 플랜으로 새 사이클을 시작합니다.
      *
      * @param email 시작을 요청한 사용자
@@ -218,7 +241,7 @@ public class PlanService {
         Plan nextPlan = planRepository.findById(planId).orElseThrow(() -> new PlanNotFoundException(planId));
 
         LocalDate today = LocalDate.now(KST);
-        process.complete(nextPlan, today);
+        process.complete(today);
 
         PlanProcess nextProcess = PlanProcess.builder()
                 .plan(nextPlan)
@@ -267,7 +290,7 @@ public class PlanService {
     }
 
     private Progress computeProgress(PlanProcess process) {
-        int totalWeeks = process.getPlan().getDurationWeeks();
+        int totalWeeks = process.getActivePlan().getDurationWeeks();
         long totalDays = (long) totalWeeks * DAYS_PER_WEEK;
 
         LocalDate today = LocalDate.now(KST);
