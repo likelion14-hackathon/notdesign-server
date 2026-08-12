@@ -5,9 +5,14 @@ spring:
     password: ${DB_PASSWORD:root}
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      # 팀 공용 클라우드 Redis(redislabs, db 0)로 통합. 로그인 토큰/블랙리스트 + 분석 결과 공용.
+      # 비밀번호는 커밋 금지 — 환경변수(REDIS_PASSWORD)로 주입 (카톡 공유 값).
+      host: ${REDIS_HOST:redis-12829.c340.ap-northeast-2-1.ec2.cloud.redislabs.com}
+      port: ${REDIS_PORT:12829}
+      username: ${REDIS_USERNAME:default}
       password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
   jpa:
     hibernate:
       ddl-auto: update
