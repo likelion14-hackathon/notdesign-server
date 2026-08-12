@@ -19,7 +19,8 @@ public enum ErrorCode {
     PLAN_CYCLE_NOT_FINISHED("C4094", "아직 진행 중인 플랜이 끝나지 않았습니다.", 409),
     RESULT_ALREADY_IMPORTED("C4095", "새로운 측정 데이터가 없습니다.", 409),
     REPORT_GENERATION_FAILED("C5001", "리포트를 생성하지 못했습니다.", 500),
-    UNKNOWN_ERROR("C500", "오류가 발생하였습니다.", 500);
+    UNKNOWN_ERROR("C500", "오류가 발생하였습니다.", 500),
+    ANALYZE_SERVER_ERROR("C502", "이미지 분석 서버 호출에 실패했습니다.", 502);
 
     private final String code;
     private final String message;
