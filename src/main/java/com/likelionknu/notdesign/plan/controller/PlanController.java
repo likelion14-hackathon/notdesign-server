@@ -2,6 +2,7 @@ package com.likelionknu.notdesign.plan.controller;
 
 import com.likelionknu.notdesign.common.response.GlobalResponse;
 import com.likelionknu.notdesign.common.security.SecurityUtil;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanAdjustResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanStartResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanStatsResponseDto;
@@ -52,6 +53,12 @@ public class PlanController {
     @Operation(summary = "플랜 시작")
     public GlobalResponse<PlanStartResponseDto> startPlan(@PathVariable Long planId) {
         return GlobalResponse.ok(planService.startPlan(SecurityUtil.getUsername(), planId));
+    }
+
+    @PostMapping("/{planId}/adjust")
+    @Operation(summary = "조정 플랜 적용 및 시작")
+    public GlobalResponse<PlanAdjustResponseDto> applyAdjustedPlan(@PathVariable Long planId) {
+        return GlobalResponse.ok(planService.applyAdjustedPlan(SecurityUtil.getUsername(), planId));
     }
 
     @PostMapping("/{planId}/next")
