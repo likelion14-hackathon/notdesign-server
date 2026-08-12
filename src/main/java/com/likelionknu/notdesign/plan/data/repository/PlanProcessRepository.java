@@ -10,4 +10,6 @@ public interface PlanProcessRepository extends JpaRepository<PlanProcess, Long> 
     boolean existsByUser_IdAndCompletedAtIsNull(Long userId);
 
     boolean existsByPlan_Id(Long planId);
+
+    Optional<PlanProcess> findFirstByPlan_IdOrFuturePlan_Id(Long planId, Long futurePlanId);
 }

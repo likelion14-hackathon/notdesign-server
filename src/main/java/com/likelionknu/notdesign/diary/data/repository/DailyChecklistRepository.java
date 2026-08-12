@@ -9,4 +9,7 @@ import java.util.List;
 public interface DailyChecklistRepository extends JpaRepository<DailyChecklist, Long> {
     @EntityGraph(attributePaths = {"timeline", "timeline.item"})
     List<DailyChecklist> findAllByProcess_IdAndTargetDateOrderByTimeline_Item_IdAsc(Long processId, LocalDate targetDate);
+
+    @EntityGraph(attributePaths = {"timeline", "timeline.item"})
+    List<DailyChecklist> findAllByProcess_IdAndTargetDateLessThanEqual(Long processId, LocalDate targetDate);
 }

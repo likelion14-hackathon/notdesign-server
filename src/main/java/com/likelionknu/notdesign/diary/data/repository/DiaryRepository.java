@@ -10,4 +10,7 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
             Long userId, LocalDateTime startDate, LocalDateTime endDate);
 
     long countByProcess_Id(Long processId);
+
+    List<Diary> findAllByProcess_IdAndRecordedAtLessThanEqualOrderByRecordedAtAsc(
+            Long processId, LocalDateTime measuredAt);
 }

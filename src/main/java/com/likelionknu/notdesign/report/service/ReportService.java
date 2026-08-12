@@ -1,8 +1,11 @@
 package com.likelionknu.notdesign.report.service;
 
 import com.likelionknu.notdesign.plan.data.entity.PlanItem;
+import com.likelionknu.notdesign.plan.data.entity.PlanProcess;
+import com.likelionknu.notdesign.plan.data.repository.PlanProcessRepository;
 import com.likelionknu.notdesign.plan.data.enums.ImprovementItem;
 import com.likelionknu.notdesign.report.data.dto.response.ReportContributionResponseDto;
+import com.likelionknu.notdesign.report.data.dto.response.ReportExecutionResponseDto;
 import com.likelionknu.notdesign.report.data.dto.response.ReportMetricResponseDto;
 import com.likelionknu.notdesign.report.data.dto.response.ReportResponseDto;
 import com.likelionknu.notdesign.report.data.entity.Report;
@@ -32,6 +35,8 @@ public class ReportService {
     private final ReportItemsRepository reportItemsRepository;
     private final ResultRepository resultRepository;
     private final UserRepository userRepository;
+    private final PlanProcessRepository planProcessRepository;
+    private final ReportAttributionEngine attributionEngine;
 
     private void checkOwner(Long userId, Report report) {
         if (!report.getResult().getUser().getId().equals(userId)) {
@@ -41,8 +46,12 @@ public class ReportService {
 
     private Result getBaseline(Report report) {
         Long planId = report.getPlan().getId();
+        PlanProcess process = planProcessRepository.findFirstByPlan_IdOrFuturePlan_Id(planId, planId)
+                .orElseThrow(() -> new ResultNotFoundException(planId));
 
-        return resultRepository.findFirstByPlan_IdOrderByMeasuredAtAsc(planId)
+        return resultRepository
+                .findFirstByUser_IdAndMeasuredAtGreaterThanEqualOrderByMeasuredAtAsc(
+                        process.getUser().getId(), process.getStartedAt().atStartOfDay())
                 .orElseThrow(() -> new ResultNotFoundException(planId));
     }
 
@@ -105,6 +114,35 @@ public class ReportService {
         return contributions;
     }
 
+    private List<ReportExecutionResponseDto> getExecutions(Report report) {
+        Long planId = report.getPlan().getId();
+
+        PlanProcess process = planProcessRepository.findFirstByPlan_IdOrFuturePlan_Id(planId, planId)
+                .orElse(null);
+
+        if (process == null) {
+            return List.of();
+        }
+
+        List<ReportExecutionResponseDto> executions = new ArrayList<>();
+
+        for (ReportAttributionEngine.WeeklyExecution execution : attributionEngine.getWeeklyExecutions(
+                process.getId(), planId, process.getStartedAt(),
+                report.getPlan().getDurationWeeks(), report.getResult().getMeasuredAt().toLocalDate())) {
+            PlanItem item = execution.timeline().getItem();
+
+            executions.add(ReportExecutionResponseDto.builder()
+                    .category(item.getCategory())
+                    .categoryName(item.getCategory().getDisplayName())
+                    .name(item.getName())
+                    .plannedWeeks(execution.plannedWeeks())
+                    .doneWeeks(execution.doneWeeks())
+                    .build());
+        }
+
+        return executions;
+    }
+
     private ReportResponseDto toResponse(Report report) {
         return ReportResponseDto.builder()
                 .reportId(report.getId())
@@ -114,6 +152,7 @@ public class ReportService {
                 .nextPlanPrice(report.getNextPlanPrice())
                 .metrics(getMetrics(report))
                 .contributions(getContributions(report.getId()))
+                .executions(getExecutions(report))
                 .build();
     }
 
