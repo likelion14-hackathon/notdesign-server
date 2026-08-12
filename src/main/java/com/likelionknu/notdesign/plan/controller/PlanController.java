@@ -54,6 +54,12 @@ public class PlanController {
         return GlobalResponse.ok(planService.startPlan(SecurityUtil.getUsername(), planId));
     }
 
+    @PostMapping("/{planId}/next")
+    @Operation(summary = "다음 12주 플랜 시작")
+    public GlobalResponse<PlanStartResponseDto> startNextPlan(@PathVariable Long planId) {
+        return GlobalResponse.ok(planService.startNextPlan(SecurityUtil.getUsername(), planId));
+    }
+
     @DeleteMapping("/{planId}")
     @Operation(summary = "플랜 삭제")
     public GlobalResponse<Void> deletePlan(@PathVariable Long planId) {

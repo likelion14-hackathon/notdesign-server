@@ -46,4 +46,9 @@ public class PlanProcess {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public void complete(Plan futurePlan, LocalDate completedAt) {
+        this.futurePlan = futurePlan;
+        this.completedAt = completedAt;
+    }
 }

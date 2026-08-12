@@ -20,6 +20,7 @@ import com.likelionknu.notdesign.plan.data.repository.PlanTimelineRepository;
 import com.likelionknu.notdesign.plan.data.repository.PlanTimelineWeekRepository;
 import com.likelionknu.notdesign.plan.exception.PlanAlreadyInProgressException;
 import com.likelionknu.notdesign.plan.exception.PlanAlreadyStartedException;
+import com.likelionknu.notdesign.plan.exception.PlanCycleNotFinishedException;
 import com.likelionknu.notdesign.plan.exception.PlanNotFoundException;
 import com.likelionknu.notdesign.plan.exception.PlanProcessNotFoundException;
 import com.likelionknu.notdesign.result.data.repository.ResultRepository;
@@ -192,6 +193,43 @@ public class PlanService {
         return PlanStartResponseDto.builder()
                 .processId(process.getId())
                 .startedAt(process.getStartedAt())
+                .build();
+    }
+
+    /**
+     * 12주를 마친 사이클을 종료하고, 다음 플랜으로 새 사이클을 시작합니다.
+     *
+     * @param email 시작을 요청한 사용자
+     * @param planId 다음 사이클에서 사용할 플랜 ID
+     * @return 새로 생성된 진행(PlanProcess) ID와 시작일
+     * @throws PlanProcessNotFoundException 진행 중인 사이클이 없는 경우
+     * @throws PlanCycleNotFinishedException 진행 중인 사이클이 아직 12주를 채우지 못한 경우
+     * @throws PlanNotFoundException 플랜을 찾을 수 없는 경우
+     */
+    @Transactional
+    public PlanStartResponseDto startNextPlan(String email, Long planId) {
+        PlanProcess process = getCurrentProcess(email);
+        Progress progress = computeProgress(process);
+
+        if (progress.elapsedDays() < progress.totalWeeks() * DAYS_PER_WEEK) {
+            throw new PlanCycleNotFinishedException(process.getId(), progress.currentWeek(), progress.totalWeeks());
+        }
+
+        Plan nextPlan = planRepository.findById(planId).orElseThrow(() -> new PlanNotFoundException(planId));
+
+        LocalDate today = LocalDate.now(KST);
+        process.complete(nextPlan, today);
+
+        PlanProcess nextProcess = PlanProcess.builder()
+                .plan(nextPlan)
+                .user(process.getUser())
+                .startedAt(today)
+                .build();
+        planProcessRepository.save(nextProcess);
+
+        return PlanStartResponseDto.builder()
+                .processId(nextProcess.getId())
+                .startedAt(nextProcess.getStartedAt())
                 .build();
     }
 
