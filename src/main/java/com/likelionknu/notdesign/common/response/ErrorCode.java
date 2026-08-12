@@ -16,6 +16,7 @@ public enum ErrorCode {
     EMAIL_DUPLICATION("C4091", "이미 존재하는 이메일입니다.", 409),
     PLAN_ALREADY_IN_PROGRESS("C4092", "이미 진행 중인 플랜이 있습니다.", 409),
     PLAN_ALREADY_STARTED("C4093", "이미 시작된 플랜은 삭제할 수 없습니다.", 409),
+    PLAN_CYCLE_NOT_FINISHED("C4094", "아직 진행 중인 플랜이 끝나지 않았습니다.", 409),
     UNKNOWN_ERROR("C500", "오류가 발생하였습니다.", 500);
 
     private final String code;
