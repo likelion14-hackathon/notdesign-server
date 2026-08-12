@@ -33,10 +33,10 @@ public class Report {
     @JoinColumn(name = "result_id", nullable = false, unique = true)
     private Result result;
 
-    @Column
+    @Column(length = 1000)
     private String summary;
 
-    @Column(name = "next_plan_suggestion")
+    @Column(name = "next_plan_suggestion", length = 1000)
     private String nextPlanSuggestion;
 
     @Column(name = "next_plan_price")

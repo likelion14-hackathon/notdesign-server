@@ -17,4 +17,5 @@ public class ReportResponseDto {
 
     private List<ReportMetricResponseDto> metrics;
     private List<ReportContributionResponseDto> contributions;
+    private List<ReportExecutionResponseDto> executions;
 }
