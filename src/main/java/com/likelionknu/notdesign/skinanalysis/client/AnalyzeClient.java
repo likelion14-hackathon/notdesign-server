@@ -33,6 +33,16 @@ public class AnalyzeClient {
         return post("/analyze", imageUrl);
     }
 
+    /**
+     * 체험 피부 이미지 분석 요청(POST /analyze/diary).
+     *
+     * @param imageUrl 공개 접근 가능한 얼굴 이미지 URL
+     * @return 202 응답 DTO(request_id, redis_key)
+     */
+    public AnalyzeAcceptedDto requestDiary(String imageUrl) {
+        return post("/analyze/diary", imageUrl);
+    }
+
     private AnalyzeAcceptedDto post(String path, String imageUrl) {
         try {
             AnalyzeAcceptedDto response = restClient.post()
