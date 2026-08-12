@@ -22,3 +22,7 @@ springdoc:
 kakao:
   token-uri: ${KAKAO_TOKEN_URI:https://kauth.kakao.com/oauth/token}
   user-info-uri: ${KAKAO_USER_INFO_URI:https://kapi.kakao.com/v2/user/me}
+
+services:
+  analyze:
+    url: ${SERVICES_ANALYZE_URL:http://localhost:8000}
