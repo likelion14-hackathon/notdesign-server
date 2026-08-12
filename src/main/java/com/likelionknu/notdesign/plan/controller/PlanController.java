@@ -2,19 +2,24 @@ package com.likelionknu.notdesign.plan.controller;
 
 import com.likelionknu.notdesign.common.response.GlobalResponse;
 import com.likelionknu.notdesign.common.security.SecurityUtil;
+import com.likelionknu.notdesign.plan.data.dto.request.PlanCreateRequestDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanAdjustResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanCreateResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanStartResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanStatsResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanSummaryResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanTodoResponseDto;
+import com.likelionknu.notdesign.plan.service.PlanGenerationService;
 import com.likelionknu.notdesign.plan.service.PlanService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
@@ -24,6 +29,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PlanController {
     private final PlanService planService;
+    private final PlanGenerationService planGenerationService;
+
+    @PostMapping
+    @Operation(summary = "AI 플랜 생성")
+    public GlobalResponse<PlanCreateResponseDto> generatePlan(@Valid @RequestBody PlanCreateRequestDto request) {
+        return GlobalResponse.ok(planGenerationService.generate(SecurityUtil.getUsername(), request));
+    }
 
     @GetMapping("/current")
     @Operation(summary = "현재 플랜 진행 요약 조회")
