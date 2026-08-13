@@ -9,7 +9,6 @@ import java.util.List;
 @Component
 public class PlanPromptBuilder {
 
-    // 4개 모드 공용 규칙. 뒤에 "# 사용 가능한 관리 항목"으로 카탈로그를 이어 붙인다.
     private static final String SYSTEM_RULES = """
             # 역할
 
@@ -122,25 +121,10 @@ public class PlanPromptBuilder {
             pigmentation / hydration / erythema 는 그 항목이 해당 지표에 얼마나 강하게 작용하는지다 (0.00~0.60).
             """;
 
-    /**
-     * 4개 모드 공용 System 프롬프트. 규칙 뒤에 WIDE 카탈로그(JSON)를 이어 붙인다.
-     *
-     * @param catalog 피벗된 카탈로그
-     * @return 규칙 + 카탈로그가 담긴 시스템 프롬프트
-     */
     public String buildSystem(Catalog catalog) {
         return SYSTEM_RULES + "\n" + serializeCatalog(catalog);
     }
 
-    /**
-     * NEW 모드 User 프롬프트. 측정 결과와(있다면) 웰니스 지출 진단을 담는다.
-     *
-     * @param pigmentation 색소침착 측정값 (0~100)
-     * @param hydration    수분력 측정값 (0~100)
-     * @param erythema     홍조 측정값 (0~100)
-     * @param monthlyBudget 월 평균 피부 관리 지출(원). null 이면 지출 진단 블록을 넣지 않는다.
-     * @return NEW 모드 사용자 프롬프트
-     */
     public String buildUserNew(int pigmentation, int hydration, int erythema, Integer monthlyBudget) {
         StringBuilder builder = new StringBuilder();
         builder.append("# 모드\nNEW\n\n");
@@ -168,15 +152,6 @@ public class PlanPromptBuilder {
                                List<Integer> weeks, String frequency, List<AttributionLine> attributions) {
     }
 
-    /**
-     * NEXT 모드 User 프롬프트. 직전 사이클의 최종 측정과 항목별 기여도를 담아 다음 12주를 다시 설계하게 한다.
-     *
-     * @param metrics            지표별 기준선→최종 변화 (측정 결과 겸 성과)
-     * @param previousItems      지난 플랜 항목과 항목별 기여도
-     * @param previousTotalPrice 지난 사이클 플랜 총액(원)
-     * @param nextPlanPrice      낭비 제거 후 권장 총액(원). null 이면 지출 진단 블록을 넣지 않는다.
-     * @return NEXT 모드 사용자 프롬프트
-     */
     public String buildUserNext(List<MetricChange> metrics, List<PreviousItem> previousItems,
                                 int previousTotalPrice, Integer nextPlanPrice) {
         StringBuilder builder = new StringBuilder();

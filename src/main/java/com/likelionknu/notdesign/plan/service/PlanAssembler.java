@@ -26,14 +26,6 @@ public class PlanAssembler {
     private final PlanTimelineRepository planTimelineRepository;
     private final PlanTimelineWeekRepository planTimelineWeekRepository;
 
-    /**
-     * AI 응답을 Plan → PlanItem → PlanTimeline → PlanTimelineWeek 순으로 저장한다.
-     *
-     * @param mode     생성 모드 (PlanType·기간 결정)
-     * @param response 검증을 통과한 AI 응답
-     * @param catalog  itemEffectId 역조회용 카탈로그
-     * @return 저장된 Plan
-     */
     @Transactional
     public Plan assemble(PlanGenerationMode mode, PlanGenerationAiResponse response, Catalog catalog) {
         int totalPrice = response.items().stream()
