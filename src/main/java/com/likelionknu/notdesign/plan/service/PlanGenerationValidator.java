@@ -17,12 +17,6 @@ import java.util.Set;
 @Component
 public class PlanGenerationValidator {
 
-    /**
-     * @param response     AI 응답
-     * @param catalog      카탈로그(유효 id·카테고리 조회)
-     * @param durationWeeks 플랜 기간(주). weeks 범위 검증에 쓴다.
-     * @return 위반 목록 (비어 있으면 통과)
-     */
     public List<String> validate(PlanGenerationAiResponse response, Catalog catalog, int durationWeeks) {
         List<String> violations = new ArrayList<>();
         List<Item> items = response.items();

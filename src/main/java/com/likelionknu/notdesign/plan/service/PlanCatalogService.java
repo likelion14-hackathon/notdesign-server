@@ -39,11 +39,6 @@ public class PlanCatalogService {
         }
     }
 
-    /**
-     * item_effect 전체를 한 번 조회해 WIDE 카탈로그로 피벗한다.
-     *
-     * @return 프롬프트용 목록 + id 역조회 맵
-     */
     @Transactional(readOnly = true)
     public Catalog load() {
         List<PlanItemEffect> all = planItemEffectRepository.findAll();
