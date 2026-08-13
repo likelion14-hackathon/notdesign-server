@@ -3,6 +3,7 @@ package com.likelionknu.notdesign.plan.service;
 import com.likelionknu.notdesign.plan.service.PlanCatalogService.Catalog;
 import com.likelionknu.notdesign.plan.service.PlanCatalogService.CatalogEntry;
 import org.springframework.stereotype.Component;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Component
@@ -154,6 +155,94 @@ public class PlanPromptBuilder {
         }
 
         return builder.toString();
+    }
+
+    public record MetricChange(String name, int before, int after, int delta) {
+    }
+
+    public record AttributionLine(String improvementName, BigDecimal score,
+                                  BigDecimal contributionRate, String reliability) {
+    }
+
+    public record PreviousItem(long catalogId, String name, String categoryName,
+                               List<Integer> weeks, String frequency, List<AttributionLine> attributions) {
+    }
+
+    /**
+     * NEXT 모드 User 프롬프트. 직전 사이클의 최종 측정과 항목별 기여도를 담아 다음 12주를 다시 설계하게 한다.
+     *
+     * @param metrics            지표별 기준선→최종 변화 (측정 결과 겸 성과)
+     * @param previousItems      지난 플랜 항목과 항목별 기여도
+     * @param previousTotalPrice 지난 사이클 플랜 총액(원)
+     * @param nextPlanPrice      낭비 제거 후 권장 총액(원). null 이면 지출 진단 블록을 넣지 않는다.
+     * @return NEXT 모드 사용자 프롬프트
+     */
+    public String buildUserNext(List<MetricChange> metrics, List<PreviousItem> previousItems,
+                                int previousTotalPrice, Integer nextPlanPrice) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("# 모드\nNEXT\n\n");
+        builder.append("# 상황\n")
+                .append("직전 12주 사이클이 끝났고 최종 측정까지 마쳤다.\n")
+                .append("아래 측정 결과가 이번 사이클의 새 기준선이다. 이 값으로 1순위·2순위를 다시 정하고\n")
+                .append("12주 플랜을 처음부터 다시 설계한다. 단, 지난 사이클에서 확인된 기여도를 반영한다.\n\n");
+
+        builder.append("# 측정 결과\n");
+        for (MetricChange metric : metrics) {
+            builder.append("- ").append(metric.name()).append(" ").append(metric.after()).append("/100\n");
+        }
+
+        builder.append("\n# 지난 사이클 성과 (기준선 → 최종, 변화량)\n");
+        for (MetricChange metric : metrics) {
+            builder.append(describeMetric(metric));
+        }
+
+        builder.append("\n# 지난 플랜 구성과 항목별 기여도 (서버 계산 완료)\n")
+                .append("id 는 목록의 itemEffectId 다.\n");
+        for (PreviousItem item : previousItems) {
+            builder.append(describePreviousItem(item));
+        }
+
+        builder.append("\n# 지난 성과 반영 규칙\n")
+                .append("- 세 지표 모두에서 기여 신호가 없던 항목은 이번 플랜에 넣지 않는다.\n")
+                .append("  그 항목이 겨냥하던 지표는 목록에서 다른 항목을 골라 채운다.\n")
+                .append("- 어느 지표든 기여율 10% 이상이 확인된 항목은 유지를 기본으로 한다.\n")
+                .append("  유지하더라도 이번 사이클은 새 12주다. 주차는 배치 규칙대로 처음부터 다시 짠다.\n")
+                .append("- 새 기준선에서 1순위 지표가 지난 사이클과 달라졌으면, 지난 항목 유지보다 새 1순위 공략을 우선한다.\n");
+
+        if (nextPlanPrice != null) {
+            builder.append("\n# 웰니스 지출 진단\n")
+                    .append("- 지난 사이클 플랜 총액: ").append(previousTotalPrice).append("원\n")
+                    .append("- 낭비 제거 후 권장 총액: ").append(nextPlanPrice).append("원\n")
+                    .append("- 이번 플랜 총액은 권장 총액을 넘지 않게 고른다.\n");
+        }
+
+        return builder.toString();
+    }
+
+    private String describeMetric(MetricChange metric) {
+        return "- %s %d → %d (%+d점)%n".formatted(metric.name(), metric.before(), metric.after(), metric.delta());
+    }
+
+    private String describePreviousItem(PreviousItem item) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("- [id ").append(item.catalogId()).append("] ").append(item.name())
+                .append(" (").append(item.categoryName()).append(") · 주차 ").append(item.weeks())
+                .append(" · ").append(item.frequency()).append("\n");
+        for (AttributionLine line : item.attributions()) {
+            builder.append(describeAttribution(line));
+        }
+        return builder.toString();
+    }
+
+    private String describeAttribution(AttributionLine line) {
+        if (line.score() == null || line.score().signum() == 0) {
+            return "  · %s: 기여 신호 없음%n".formatted(line.improvementName());
+        }
+        return "  · %s: %s점, 기여율 %s%%, 신뢰도 %s%n".formatted(
+                line.improvementName(),
+                line.score().stripTrailingZeros().toPlainString(),
+                line.contributionRate().stripTrailingZeros().toPlainString(),
+                line.reliability());
     }
 
     private String serializeCatalog(Catalog catalog) {
