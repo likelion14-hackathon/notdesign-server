@@ -26,8 +26,9 @@ jobs:
         with:
           context: .
           push: true
+          # 태그: latest + 커밋 SHA(추적·롤백)
           tags: |
             ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}   # 추적·롤백용 커밋 태그
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
