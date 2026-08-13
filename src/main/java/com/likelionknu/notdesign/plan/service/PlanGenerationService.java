@@ -69,7 +69,9 @@ public class PlanGenerationService {
         PlanGenerationMode mode = request.getMode();
 
         Catalog catalog = planCatalogService.load();
-        String systemPrompt = planPromptBuilder.buildSystem(catalog);
+        String systemPrompt = mode == PlanGenerationMode.TRIAL
+                ? planPromptBuilder.buildSystemTrial(catalog)
+                : planPromptBuilder.buildSystem(catalog);
         String userPrompt = buildUserPrompt(email, request, mode, catalog);
 
         PlanGenerationAiResponse aiResponse = generateWithRetry(systemPrompt, userPrompt, catalog, mode.getDurationWeeks());
@@ -90,8 +92,7 @@ public class PlanGenerationService {
             }
             case NEXT -> buildNextPrompt(email, catalog);
             case ADJUST -> buildAdjustPrompt(email, catalog);
-            case TRIAL ->
-                    throw new PlanGenerationFailedException(mode + " 모드는 아직 구현되지 않았습니다.");
+            case TRIAL -> buildTrialPrompt(request);
         };
     }
 
@@ -191,6 +192,17 @@ public class PlanGenerationService {
                         execution.timeline().getItem().getName(),
                         execution.plannedWeeks(), execution.doneWeeks()))
                 .toList();
+    }
+
+    private String buildTrialPrompt(PlanCreateRequestDto request) {
+        Double skinTone = request.getSkinTone();
+        Double dryness = request.getDryness();
+        Double redness = request.getRedness();
+        if (skinTone == null || dryness == null || redness == null) {
+            throw new PlanGenerationFailedException("TRIAL 모드는 skinTone·dryness·redness 가 모두 필요합니다.");
+        }
+
+        return planPromptBuilder.buildUserTrial(skinTone, dryness, redness);
     }
 
     private PlanGenerationAiResponse generateWithRetry(String systemPrompt, String userPrompt,
