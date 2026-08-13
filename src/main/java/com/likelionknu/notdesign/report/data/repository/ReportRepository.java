@@ -14,6 +14,9 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     @EntityGraph(attributePaths = {"plan", "result", "result.user"})
     Optional<Report> findFirstByResult_User_IdOrderByCreatedAtDesc(Long userId);
 
+    @EntityGraph(attributePaths = {"plan", "result", "result.user"})
+    Optional<Report> findFirstByResult_User_IdAndTypeOrderByCreatedAtDesc(Long userId, ReportType type);
+
     boolean existsByPlan_IdInAndType(List<Long> planIds, ReportType type);
 
     boolean existsByResult_Id(Long resultId);

@@ -5,10 +5,21 @@ import com.likelionknu.notdesign.plan.data.dto.request.PlanCreateRequestDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanCreateResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailItemResponseDto;
 import com.likelionknu.notdesign.plan.data.entity.Plan;
+import com.likelionknu.notdesign.plan.data.entity.PlanItem;
+import com.likelionknu.notdesign.plan.data.entity.PlanTimeline;
+import com.likelionknu.notdesign.plan.data.entity.PlanTimelineWeek;
 import com.likelionknu.notdesign.plan.data.enums.PlanGenerationMode;
+import com.likelionknu.notdesign.plan.data.repository.PlanTimelineRepository;
+import com.likelionknu.notdesign.plan.data.repository.PlanTimelineWeekRepository;
 import com.likelionknu.notdesign.plan.exception.PlanGenerationFailedException;
 import com.likelionknu.notdesign.plan.service.PlanCatalogService.Catalog;
 import com.likelionknu.notdesign.plan.service.PlanCatalogService.CatalogEntry;
+import com.likelionknu.notdesign.report.data.entity.Report;
+import com.likelionknu.notdesign.report.data.entity.ReportItems;
+import com.likelionknu.notdesign.report.data.enums.ReportType;
+import com.likelionknu.notdesign.report.data.repository.ReportItemsRepository;
+import com.likelionknu.notdesign.report.data.repository.ReportRepository;
+import com.likelionknu.notdesign.report.exception.ReportNotFoundException;
 import com.likelionknu.notdesign.result.data.entity.Result;
 import com.likelionknu.notdesign.result.data.exception.ResultNotFoundException;
 import com.likelionknu.notdesign.result.data.repository.ResultRepository;
@@ -18,7 +29,10 @@ import com.likelionknu.notdesign.user.data.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -26,6 +40,10 @@ import java.util.List;
 public class PlanGenerationService {
     private final UserRepository userRepository;
     private final ResultRepository resultRepository;
+    private final ReportRepository reportRepository;
+    private final ReportItemsRepository reportItemsRepository;
+    private final PlanTimelineRepository planTimelineRepository;
+    private final PlanTimelineWeekRepository planTimelineWeekRepository;
     private final PlanCatalogService planCatalogService;
     private final PlanPromptBuilder planPromptBuilder;
     private final PlanAiClient planAiClient;
@@ -44,7 +62,7 @@ public class PlanGenerationService {
 
         Catalog catalog = planCatalogService.load();
         String systemPrompt = planPromptBuilder.buildSystem(catalog);
-        String userPrompt = buildUserPrompt(email, request, mode);
+        String userPrompt = buildUserPrompt(email, request, mode, catalog);
 
         PlanGenerationAiResponse aiResponse = generateWithRetry(systemPrompt, userPrompt, catalog, mode.getDurationWeeks());
         Plan plan = planAssembler.assemble(mode, aiResponse, catalog);
@@ -52,7 +70,7 @@ public class PlanGenerationService {
         return toResponse(plan, mode, aiResponse, catalog);
     }
 
-    private String buildUserPrompt(String email, PlanCreateRequestDto request, PlanGenerationMode mode) {
+    private String buildUserPrompt(String email, PlanCreateRequestDto request, PlanGenerationMode mode, Catalog catalog) {
         return switch (mode) {
             case NEW -> {
                 User user = userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
@@ -62,9 +80,72 @@ public class PlanGenerationService {
                 yield planPromptBuilder.buildUserNew(
                         result.getPigmentation(), result.getHydration(), result.getErythema(), request.getMonthlyBudget());
             }
-            case TRIAL, ADJUST, NEXT ->
+            case NEXT -> buildNextPrompt(email, catalog);
+            case TRIAL, ADJUST ->
                     throw new PlanGenerationFailedException(mode + " 모드는 아직 구현되지 않았습니다.");
         };
+    }
+
+    private String buildNextPrompt(String email, Catalog catalog) {
+        User user = userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
+        Report report = reportRepository
+                .findFirstByResult_User_IdAndTypeOrderByCreatedAtDesc(user.getId(), ReportType.FINAL)
+                .orElseThrow(ReportNotFoundException::new);
+
+        return planPromptBuilder.buildUserNext(
+                toMetricChanges(report), toPreviousItems(report, catalog),
+                report.getPlan().getTotalPrice(), report.getNextPlanPrice());
+    }
+
+    private List<PlanPromptBuilder.MetricChange> toMetricChanges(Report report) {
+        Result measured = report.getResult();
+        return List.of(
+                toMetricChange("색소침착", measured.getPigmentation(), report.getPigmentationDelta()),
+                toMetricChange("수분력", measured.getHydration(), report.getHydrationDelta()),
+                toMetricChange("홍조", measured.getErythema(), report.getErythemaDelta()));
+    }
+
+    private PlanPromptBuilder.MetricChange toMetricChange(String name, int measured, int delta) {
+        return new PlanPromptBuilder.MetricChange(name, measured - delta, measured, delta);
+    }
+
+    private List<PlanPromptBuilder.PreviousItem> toPreviousItems(Report report, Catalog catalog) {
+        List<PlanTimeline> timelines =
+                planTimelineRepository.findAllByPlan_IdOrderByItem_IdAsc(report.getPlan().getId());
+        List<Long> timelineIds = timelines.stream().map(PlanTimeline::getId).toList();
+
+        Map<Long, List<Integer>> weeksByTimeline = planTimelineWeekRepository
+                .findAllByTimeline_IdInOrderByWeekAsc(timelineIds).stream()
+                .collect(Collectors.groupingBy(week -> week.getTimeline().getId(),
+                        Collectors.mapping(PlanTimelineWeek::getWeek, Collectors.toList())));
+
+        Map<Long, List<ReportItems>> attributionsByTimeline = reportItemsRepository
+                .findAllByReport_IdOrderByImprovementAscContributionRateDesc(report.getId()).stream()
+                .collect(Collectors.groupingBy(reportItem -> reportItem.getTimeline().getId()));
+
+        List<PlanPromptBuilder.PreviousItem> previousItems = new ArrayList<>();
+        for (PlanTimeline timeline : timelines) {
+            PlanItem item = timeline.getItem();
+            CatalogEntry entry = catalog.resolveByName(item.getName());
+            if (entry == null) {
+                throw new PlanGenerationFailedException("카탈로그에서 항목을 찾을 수 없습니다: " + item.getName());
+            }
+            previousItems.add(new PlanPromptBuilder.PreviousItem(
+                    entry.id(), item.getName(), item.getCategory().getDisplayName(),
+                    weeksByTimeline.getOrDefault(timeline.getId(), List.of()),
+                    item.getFrequency(),
+                    toAttributionLines(attributionsByTimeline.getOrDefault(timeline.getId(), List.of()))));
+        }
+        return previousItems;
+    }
+
+    private List<PlanPromptBuilder.AttributionLine> toAttributionLines(List<ReportItems> reportItems) {
+        return reportItems.stream()
+                .map(reportItem -> new PlanPromptBuilder.AttributionLine(
+                        reportItem.getImprovement().getDisplayName(),
+                        reportItem.getScore(), reportItem.getContributionRate(),
+                        reportItem.getReliability() == null ? "" : reportItem.getReliability().name()))
+                .toList();
     }
 
     private PlanGenerationAiResponse generateWithRetry(String systemPrompt, String userPrompt,

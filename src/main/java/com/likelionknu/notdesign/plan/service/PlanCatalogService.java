@@ -24,13 +24,18 @@ public class PlanCatalogService {
                                BigDecimal pigmentation, BigDecimal hydration, BigDecimal erythema) {
     }
 
-    public record Catalog(List<CatalogEntry> entries, Map<Long, CatalogEntry> byAnyId) {
+    public record Catalog(List<CatalogEntry> entries, Map<Long, CatalogEntry> byAnyId,
+                          Map<String, CatalogEntry> byName) {
         public boolean containsId(Long id) {
             return byAnyId.containsKey(id);
         }
 
         public CatalogEntry resolve(Long id) {
             return byAnyId.get(id);
+        }
+
+        public CatalogEntry resolveByName(String name) {
+            return byName.get(name);
         }
     }
 
@@ -58,7 +63,7 @@ public class PlanCatalogService {
         Map<Long, CatalogEntry> byAnyId = all.stream()
                 .collect(Collectors.toMap(PlanItemEffect::getId, effect -> entryByName.get(effect.getName())));
 
-        return new Catalog(entries, byAnyId);
+        return new Catalog(entries, byAnyId, entryByName);
     }
 
     private CatalogEntry toEntry(List<PlanItemEffect> group) {
