@@ -239,7 +239,7 @@ public class PlanPromptBuilder {
         StringBuilder builder = new StringBuilder();
         builder.append("# 모드\nTRIAL (1주 체험)\n\n");
         builder.append("# 셀카 간이 분석 결과 (나쁜 정도, 0~100, 클수록 나쁨)\n")
-                .append("- 색소침착 나쁜 정도 ").append(Math.round(skinTone * 10)).append("/100\n")
+                .append("- 색소침착 나쁜 정도 ").append(Math.round((10 - skinTone) * 10)).append("/100\n")
                 .append("- 수분 부족 정도 ").append(Math.round(dryness * 10)).append("/100\n")
                 .append("- 홍조 나쁜 정도 ").append(Math.round(redness * 10)).append("/100\n");
 
