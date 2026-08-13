@@ -168,7 +168,9 @@ public class PlanPromptBuilder {
             체험이다. 비용 부담이 크면 체험의 의미가 없다.
 
             - PROCEDURE 는 같은 지표를 겨냥한 항목 중 가격이 낮은 쪽을 고른다. 가장 비싼 항목은 고르지 않는다.
+            - 매일 체크 항목(LIFESTYLE·HOME_CARE·SUPPLEMENT)도 같은 효과라면 더 싼 항목을 고른다. 특히 HOME_CARE 는 고가 제품을 피한다.
             - SUPPLEMENT 는 1주 만에 효과가 나지 않으므로, 넣더라도 저가일 때만 1개 넣는다.
+            - 체험 총액은 최대한 낮춘다. 정식 12주 플랜보다 비싸면 안 된다. 한 주 부담 없이 해보는 수준으로 구성한다.
 
             # 배치 규칙
 
@@ -376,6 +378,7 @@ public class PlanPromptBuilder {
 
         builder.append("\n# 문장 작성\n")
                 .append("- 유지 항목 reason 은 유지 이유가 드러나게 쓴다. 예: \"색소 기여율이 확인돼 그대로 이어가요\"\n")
+                .append("- 실행 기록이 없거나 실행률이 낮은 항목의 reason 에는 기여가 확인됐다는 표현을 쓰지 않는다. 실행이 없으면 기여 신호도 없으므로 실행을 독려하는 내용만 쓴다.\n")
                 .append("- 중단·투입 항목 reason 은 왜 ").append(adjustFrom)
                 .append("주차부터인지가 드러나야 한다. 예: \"신호가 잡히지 않아 7주차부터 다른 항목으로 바꿔 실험해요\"\n")
                 .append("- planSummary 는 무엇을 실험하는지 드러나는 한 문장, 20자 내외. 예: \"7주차부터 홍조 항목을 교체해 실험해요\"\n");
