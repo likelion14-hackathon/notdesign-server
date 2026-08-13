@@ -220,6 +220,69 @@ public class PlanPromptBuilder {
                 line.reliability());
     }
 
+    public record ExecutionLine(String name, List<Integer> plannedWeeks, List<Integer> doneWeeks) {
+    }
+
+    public String buildUserAdjust(List<MetricChange> metrics, int elapsedWeeks,
+                                  List<PreviousItem> currentItems, List<ExecutionLine> executions) {
+        int adjustFrom = elapsedWeeks + 1;
+        StringBuilder builder = new StringBuilder();
+        builder.append("# 모드\nADJUST\n\n");
+        builder.append("# 상황\n")
+                .append(elapsedWeeks).append("주차에 중간 측정을 마친, 진행 중인 12주 사이클이다.\n")
+                .append("지금 만드는 플랜은 진행 중인 사이클에 그대로 덮어씌워진다. 시작일과 진행률은 바뀌지 않는다.\n")
+                .append("1~").append(elapsedWeeks).append("주차는 이미 지나간 시간이라 수정할 수 없다.\n")
+                .append("출력은 여전히 1~12주차 전체를 담은 12주 플랜이다.\n\n");
+
+        builder.append("# 중간 측정 결과\n");
+        for (MetricChange metric : metrics) {
+            builder.append("- ").append(metric.name()).append(" ").append(metric.after()).append("/100\n");
+        }
+
+        builder.append("\n# 지표 변화 (기준선 → 중간 측정, 변화량)\n");
+        for (MetricChange metric : metrics) {
+            builder.append(describeMetric(metric));
+        }
+
+        builder.append("\n# 현재 플랜 구성과 항목별 기여도 (복제 원본, 서버 계산 완료)\n")
+                .append("id 는 목록의 itemEffectId 다. 주차는 현재 배치 그대로다.\n");
+        for (PreviousItem item : currentItems) {
+            builder.append(describePreviousItem(item));
+        }
+
+        builder.append("\n# 주차별 실행 현황 (측정일까지)\n");
+        for (ExecutionLine execution : executions) {
+            builder.append(describeExecution(execution));
+        }
+
+        builder.append("\n# 조정 규칙 (반드시 지킬 것)\n")
+                .append("1. 1~").append(elapsedWeeks).append("주차 복제: 위 항목을 모두 출력에 포함하고, 각 항목 주차 중 ")
+                .append(elapsedWeeks).append(" 이하 값은 원본과 완전히 같아야 한다. 빼지도 더하지도 바꾸지도 않는다.\n")
+                .append("2. 조정은 ").append(adjustFrom).append("주차부터만 한다.\n")
+                .append("   - 세 지표 모두 기여 신호가 없던 항목은 주차에서 ").append(adjustFrom)
+                .append("주차 이후를 제거해 중단한다. 그 전 주차는 1번대로 남긴다.\n")
+                .append("   - 기여가 확인된 항목은 ").append(adjustFrom).append("~12주차 배치를 원본 흐름대로 이어간다.\n")
+                .append("3. 중단한 항목 대신 같은 지표를 겨냥하는 새 항목을 ").append(adjustFrom)
+                .append("주차부터 투입할 수 있다. 단, 교체 후에도 전체가 항목 구성 규칙(합계 3~5개, PROCEDURE 1~2개, 매일 체크 2~3개, 카테고리 3종 이상, id 중복 금지)을 만족해야 한다. 이미 5개면 투입 없이 중단만 한다.\n")
+                .append("4. 새로 투입하는 PROCEDURE 는 마지막 시술이 8주차를 넘지 않아야 한다. 불가능하면 매일 체크 항목으로 대체한다.\n")
+                .append("5. 실행률이 낮아 신호가 안 잡힌 항목(실행 주차가 계획의 절반 미만)은 효과가 없다고 단정하지 않는다. 중단 대신 유지하고 reason 에 실행을 독려하는 문장을 쓴다.\n")
+                .append("6. \"1순위 항목은 1주차에 시작\" 규칙은 이미 지난 구간이라 적용하지 않는다. 시차 분리 규칙은 ")
+                .append(adjustFrom).append("주차 이후 새로 시작하는 항목에만 적용한다.\n");
+
+        builder.append("\n# 문장 작성\n")
+                .append("- 유지 항목 reason 은 유지 이유가 드러나게 쓴다. 예: \"색소 기여율이 확인돼 그대로 이어가요\"\n")
+                .append("- 중단·투입 항목 reason 은 왜 ").append(adjustFrom)
+                .append("주차부터인지가 드러나야 한다. 예: \"신호가 잡히지 않아 7주차부터 다른 항목으로 바꿔 실험해요\"\n")
+                .append("- planSummary 는 무엇을 실험하는지 드러나는 한 문장, 20자 내외. 예: \"7주차부터 홍조 항목을 교체해 실험해요\"\n");
+
+        return builder.toString();
+    }
+
+    private String describeExecution(ExecutionLine execution) {
+        return "- %s: 계획 %s 중 실행 %s%n".formatted(
+                execution.name(), execution.plannedWeeks(), execution.doneWeeks());
+    }
+
     private String serializeCatalog(Catalog catalog) {
         StringBuilder builder = new StringBuilder("[\n");
         List<CatalogEntry> entries = catalog.entries();

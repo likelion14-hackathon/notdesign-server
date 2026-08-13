@@ -6,12 +6,15 @@ import com.likelionknu.notdesign.plan.data.dto.response.PlanCreateResponseDto;
 import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailItemResponseDto;
 import com.likelionknu.notdesign.plan.data.entity.Plan;
 import com.likelionknu.notdesign.plan.data.entity.PlanItem;
+import com.likelionknu.notdesign.plan.data.entity.PlanProcess;
 import com.likelionknu.notdesign.plan.data.entity.PlanTimeline;
 import com.likelionknu.notdesign.plan.data.entity.PlanTimelineWeek;
 import com.likelionknu.notdesign.plan.data.enums.PlanGenerationMode;
+import com.likelionknu.notdesign.plan.data.repository.PlanProcessRepository;
 import com.likelionknu.notdesign.plan.data.repository.PlanTimelineRepository;
 import com.likelionknu.notdesign.plan.data.repository.PlanTimelineWeekRepository;
 import com.likelionknu.notdesign.plan.exception.PlanGenerationFailedException;
+import com.likelionknu.notdesign.plan.exception.PlanProcessNotFoundException;
 import com.likelionknu.notdesign.plan.service.PlanCatalogService.Catalog;
 import com.likelionknu.notdesign.plan.service.PlanCatalogService.CatalogEntry;
 import com.likelionknu.notdesign.report.data.entity.Report;
@@ -20,6 +23,7 @@ import com.likelionknu.notdesign.report.data.enums.ReportType;
 import com.likelionknu.notdesign.report.data.repository.ReportItemsRepository;
 import com.likelionknu.notdesign.report.data.repository.ReportRepository;
 import com.likelionknu.notdesign.report.exception.ReportNotFoundException;
+import com.likelionknu.notdesign.report.service.ReportAttributionEngine;
 import com.likelionknu.notdesign.result.data.entity.Result;
 import com.likelionknu.notdesign.result.data.exception.ResultNotFoundException;
 import com.likelionknu.notdesign.result.data.repository.ResultRepository;
@@ -29,6 +33,8 @@ import com.likelionknu.notdesign.user.data.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +48,8 @@ public class PlanGenerationService {
     private final ResultRepository resultRepository;
     private final ReportRepository reportRepository;
     private final ReportItemsRepository reportItemsRepository;
+    private final ReportAttributionEngine attributionEngine;
+    private final PlanProcessRepository planProcessRepository;
     private final PlanTimelineRepository planTimelineRepository;
     private final PlanTimelineWeekRepository planTimelineWeekRepository;
     private final PlanCatalogService planCatalogService;
@@ -81,7 +89,8 @@ public class PlanGenerationService {
                         result.getPigmentation(), result.getHydration(), result.getErythema(), request.getMonthlyBudget());
             }
             case NEXT -> buildNextPrompt(email, catalog);
-            case TRIAL, ADJUST ->
+            case ADJUST -> buildAdjustPrompt(email, catalog);
+            case TRIAL ->
                     throw new PlanGenerationFailedException(mode + " 모드는 아직 구현되지 않았습니다.");
         };
     }
@@ -145,6 +154,42 @@ public class PlanGenerationService {
                         reportItem.getImprovement().getDisplayName(),
                         reportItem.getScore(), reportItem.getContributionRate(),
                         reportItem.getReliability() == null ? "" : reportItem.getReliability().name()))
+                .toList();
+    }
+
+    private String buildAdjustPrompt(String email, Catalog catalog) {
+        User user = userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
+        PlanProcess process = planProcessRepository.findByUser_IdAndCompletedAtIsNull(user.getId())
+                .orElseThrow(() -> new PlanProcessNotFoundException(user.getId()));
+
+        List<Long> planIds = new ArrayList<>();
+        planIds.add(process.getPlan().getId());
+        if (process.getFuturePlan() != null) {
+            planIds.add(process.getFuturePlan().getId());
+        }
+
+        Report report = reportRepository
+                .findFirstByPlan_IdInAndTypeOrderByCreatedAtDesc(planIds, ReportType.MID)
+                .orElseThrow(ReportNotFoundException::new);
+
+        Plan currentPlan = report.getPlan();
+        LocalDate measuredDate = report.getResult().getMeasuredAt().toLocalDate();
+        int elapsedWeeks = (int) ChronoUnit.WEEKS.between(process.getStartedAt(), measuredDate);
+
+        List<PlanPromptBuilder.ExecutionLine> executions = toExecutionLines(
+                attributionEngine.getWeeklyExecutions(process.getId(), currentPlan.getId(),
+                        process.getStartedAt(), currentPlan.getDurationWeeks(), measuredDate));
+
+        return planPromptBuilder.buildUserAdjust(
+                toMetricChanges(report), elapsedWeeks, toPreviousItems(report, catalog), executions);
+    }
+
+    private List<PlanPromptBuilder.ExecutionLine> toExecutionLines(
+            List<ReportAttributionEngine.WeeklyExecution> executions) {
+        return executions.stream()
+                .map(execution -> new PlanPromptBuilder.ExecutionLine(
+                        execution.timeline().getItem().getName(),
+                        execution.plannedWeeks(), execution.doneWeeks()))
                 .toList();
     }
 
