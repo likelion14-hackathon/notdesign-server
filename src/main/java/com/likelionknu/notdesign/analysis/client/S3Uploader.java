@@ -1,13 +1,15 @@
-package com.likelionknu.notdesign.skinanalysis.client;
+package com.likelionknu.notdesign.analysis.client;
 
-import com.likelionknu.notdesign.skinanalysis.exception.ImageUploadException;
+import com.likelionknu.notdesign.analysis.exception.ImageUploadException;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -17,16 +19,14 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
-/**
- * 업로드된 이미지 파일을 S3에 저장하고, analyze 서버가 다운로드할 수 있는 presigned GET URL을 반환한다.
- * 버킷을 공개하지 않아도 되도록 presigned URL(10분 유효)을 사용한다. 분석 요청은 수 초 내 처리되므로 충분하다.
- */
+// 이미지 파일을 S3에 업로드하고 analyze 서버가 받을 presigned GET URL(10분)을 반환한다. 버킷은 비공개 유지.
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class S3Uploader {
     private static final Duration PRESIGN_TTL = Duration.ofMinutes(10);
     private static final String KEY_PREFIX = "skin-analysis/";
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
 
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -34,19 +34,10 @@ public class S3Uploader {
     @Value("${aws.s3.bucket}")
     private String bucket;
 
-    /**
-     * 이미지 파일을 S3에 업로드하고 presigned GET URL을 반환한다.
-     *
-     * @param file 업로드할 이미지 파일
-     * @return 분석 서버가 접근 가능한 presigned URL
-     */
     public String upload(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            log.error("[S3Uploader] 업로드할 이미지가 비어있습니다.");
-            throw new ImageUploadException();
-        }
+        validateImage(file);
 
-        String key = KEY_PREFIX + UUID.randomUUID() + extension(file.getOriginalFilename());
+        String key = KEY_PREFIX + UUID.randomUUID() + "." + extension(file.getOriginalFilename());
         try {
             s3Client.putObject(
                     PutObjectRequest.builder()
@@ -65,6 +56,25 @@ public class S3Uploader {
         return url;
     }
 
+    // 빈 파일이거나, image/* 가 아니거나, 허용 확장자(jpg, jpeg, png, webp)가 아니면 거른다.
+    private void validateImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            log.error("[S3Uploader] 업로드할 이미지가 비어있습니다.");
+            throw new ImageUploadException();
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            log.error("[S3Uploader] 허용되지 않은 Content-Type: {}", contentType);
+            throw new ImageUploadException();
+        }
+
+        if (!ALLOWED_EXTENSIONS.contains(extension(file.getOriginalFilename()))) {
+            log.error("[S3Uploader] 허용되지 않은 확장자: {}", file.getOriginalFilename());
+            throw new ImageUploadException();
+        }
+    }
+
     private String presignedGetUrl(String key) {
         GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
                 .signatureDuration(PRESIGN_TTL)
@@ -73,11 +83,12 @@ public class S3Uploader {
         return s3Presigner.presignGetObject(presignRequest).url().toString();
     }
 
+    // 확장자를 소문자로(점 제외) 반환. 없으면 빈 문자열.
     private String extension(String originalFilename) {
-        if (originalFilename == null) {
+        if (!StringUtils.hasText(originalFilename)) {
             return "";
         }
         int dot = originalFilename.lastIndexOf('.');
-        return dot >= 0 ? originalFilename.substring(dot) : "";
+        return dot >= 0 ? originalFilename.substring(dot + 1).toLowerCase() : "";
     }
 }

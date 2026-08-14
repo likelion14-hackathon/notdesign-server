@@ -1,8 +1,8 @@
-package com.likelionknu.notdesign.skinanalysis.client;
+package com.likelionknu.notdesign.analysis.client;
 
-import com.likelionknu.notdesign.skinanalysis.client.dto.AnalyzeAcceptedDto;
-import com.likelionknu.notdesign.skinanalysis.client.dto.AnalyzeRequestDto;
-import com.likelionknu.notdesign.skinanalysis.exception.AnalyzeServerException;
+import com.likelionknu.notdesign.analysis.data.dto.request.AnalyzeRequestDto;
+import com.likelionknu.notdesign.analysis.data.dto.response.AnalyzeAcceptedDto;
+import com.likelionknu.notdesign.analysis.exception.AnalyzeServerException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -10,11 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-/**
- * analyze FastAPI 서버(기본 http://localhost:8000) 호출 전용 클라이언트.
- * POST /analyze 로 이미지 분석을 시작시키고, 202 응답(request_id/redis_key)을 받는다.
- * 실제 분석은 서버가 백그라운드로 수행하고 결과는 클라우드 Redis 에 저장한다.
- */
+// analyze FastAPI 서버 호출 클라이언트. POST로 분석을 시작시키고 202(request_id) 응답을 받는다.
 @Slf4j
 @Component
 public class AnalyzeClient {
@@ -23,22 +19,10 @@ public class AnalyzeClient {
     @Value("${services.analyze.url}")
     private String analyzeUrl;
 
-    /**
-     * 피부 이미지 분석 요청(POST /analyze).
-     *
-     * @param imageUrl 공개 접근 가능한 얼굴 이미지 URL
-     * @return 202 응답 DTO(request_id, redis_key)
-     */
     public AnalyzeAcceptedDto requestAnalyze(String imageUrl) {
         return post("/analyze", imageUrl);
     }
 
-    /**
-     * 체험 피부 이미지 분석 요청(POST /analyze/diary).
-     *
-     * @param imageUrl 공개 접근 가능한 얼굴 이미지 URL
-     * @return 202 응답 DTO(request_id, redis_key)
-     */
     public AnalyzeAcceptedDto requestDiary(String imageUrl) {
         return post("/analyze/diary", imageUrl);
     }
