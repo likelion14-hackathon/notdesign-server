@@ -1,24 +1,24 @@
 package com.likelionknu.notdesign.skinanalysis.controller;
 
 import com.likelionknu.notdesign.common.response.GlobalResponse;
-import com.likelionknu.notdesign.skinanalysis.data.dto.request.SkinAnalysisRequestDto;
 import com.likelionknu.notdesign.skinanalysis.data.dto.response.AnalyzeResultDto;
 import com.likelionknu.notdesign.skinanalysis.data.dto.response.DiaryResultDto;
 import com.likelionknu.notdesign.skinanalysis.data.dto.response.RequestIdResponseDto;
 import com.likelionknu.notdesign.skinanalysis.service.SkinAnalysisService;
 import io.swagger.v3.oas.annotations.Operation;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 피부 이미지 분석(analyze)·체험 분석(diary) 연동 컨트롤러.
- * 요청은 analyze 서버를 호출해 request_id 를 반환하고,
+ * 요청은 업로드된 이미지 파일을 S3에 저장한 뒤 analyze 서버를 호출해 request_id 를 반환하고,
  * 조회는 클라우드 Redis 에서 결과를 읽어 done 이면 반환, 아니면 404.
  */
 @RestController
@@ -27,11 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class SkinAnalysisController {
     private final SkinAnalysisService skinAnalysisService;
 
-    @PostMapping
-    @Operation(summary = "피부 이미지 분석 요청", description = "imageUrl 로 analyze 서버 호출 후 폴링용 requestId 반환")
-    public GlobalResponse<RequestIdResponseDto> requestAnalyze(
-            @Valid @RequestBody SkinAnalysisRequestDto request) {
-        String requestId = skinAnalysisService.requestAnalyze(request.imageUrl());
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "피부 이미지 분석 요청",
+            description = "얼굴 이미지 파일(image)을 업로드하면 S3 저장 후 analyze 서버 호출, 폴링용 requestId 반환")
+    public GlobalResponse<RequestIdResponseDto> requestAnalyze(@RequestPart("image") MultipartFile image) {
+        String requestId = skinAnalysisService.requestAnalyze(image);
         return GlobalResponse.ok(RequestIdResponseDto.of(requestId));
     }
 
@@ -41,11 +41,11 @@ public class SkinAnalysisController {
         return GlobalResponse.ok(skinAnalysisService.getAnalyzeResult(requestId));
     }
 
-    @PostMapping("/diary")
-    @Operation(summary = "체험 피부 이미지 분석 요청", description = "imageUrl 로 analyze 서버(/analyze/diary) 호출 후 폴링용 requestId 반환")
-    public GlobalResponse<RequestIdResponseDto> requestDiary(
-            @Valid @RequestBody SkinAnalysisRequestDto request) {
-        String requestId = skinAnalysisService.requestDiary(request.imageUrl());
+    @PostMapping(value = "/diary", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "체험 피부 이미지 분석 요청",
+            description = "얼굴 이미지 파일(image)을 업로드하면 S3 저장 후 analyze 서버(/analyze/diary) 호출, 폴링용 requestId 반환")
+    public GlobalResponse<RequestIdResponseDto> requestDiary(@RequestPart("image") MultipartFile image) {
+        String requestId = skinAnalysisService.requestDiary(image);
         return GlobalResponse.ok(RequestIdResponseDto.of(requestId));
     }
 

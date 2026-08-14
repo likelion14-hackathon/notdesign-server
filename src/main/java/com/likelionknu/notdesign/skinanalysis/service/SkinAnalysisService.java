@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.likelionknu.notdesign.common.redis.RedisService;
 import com.likelionknu.notdesign.skinanalysis.client.AnalyzeClient;
+import com.likelionknu.notdesign.skinanalysis.client.S3Uploader;
 import com.likelionknu.notdesign.skinanalysis.client.dto.AnalyzeAcceptedDto;
 import com.likelionknu.notdesign.skinanalysis.data.dto.response.AnalyzeResultDto;
 import com.likelionknu.notdesign.skinanalysis.data.dto.response.DiaryResultDto;
@@ -11,6 +12,7 @@ import com.likelionknu.notdesign.skinanalysis.exception.AnalysisResultNotFoundEx
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 피부 이미지 분석(analyze)·체험 분석(diary) 연동 서비스.
@@ -28,15 +30,17 @@ public class SkinAnalysisService {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final AnalyzeClient analyzeClient;
+    private final S3Uploader s3Uploader;
     private final RedisService redisService;
 
     /**
-     * 피부 이미지 분석을 요청하고 폴링용 request_id 를 반환한다.
+     * 이미지 파일을 S3에 업로드한 뒤 피부 이미지 분석을 요청하고 폴링용 request_id 를 반환한다.
      *
-     * @param imageUrl 공개 접근 가능한 얼굴 이미지 URL
+     * @param image 업로드할 얼굴 이미지 파일
      * @return request_id
      */
-    public String requestAnalyze(String imageUrl) {
+    public String requestAnalyze(MultipartFile image) {
+        String imageUrl = s3Uploader.upload(image);
         AnalyzeAcceptedDto accepted = analyzeClient.requestAnalyze(imageUrl);
         log.info("[requestAnalyze] 분석 요청 수락: requestId={}", accepted.requestId());
         return accepted.requestId();
@@ -53,12 +57,13 @@ public class SkinAnalysisService {
     }
 
     /**
-     * 체험 피부 이미지 분석을 요청하고 폴링용 request_id 를 반환한다.
+     * 이미지 파일을 S3에 업로드한 뒤 체험 피부 이미지 분석을 요청하고 폴링용 request_id 를 반환한다.
      *
-     * @param imageUrl 공개 접근 가능한 얼굴 이미지 URL
+     * @param image 업로드할 얼굴 이미지 파일
      * @return request_id
      */
-    public String requestDiary(String imageUrl) {
+    public String requestDiary(MultipartFile image) {
+        String imageUrl = s3Uploader.upload(image);
         AnalyzeAcceptedDto accepted = analyzeClient.requestDiary(imageUrl);
         log.info("[requestDiary] 체험 분석 요청 수락: requestId={}", accepted.requestId());
         return accepted.requestId();
