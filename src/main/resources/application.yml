@@ -33,6 +33,6 @@ services:
 
 aws:
   s3:
-    # 버킷 이름은 환경별로 달라 env로 주입. 자격증명은 표준 AWS env(AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY)로 읽는다.
+    # 버킷 이름은 env로 주입. 자격증명은 표준 AWS env(AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY)로 읽는다.
     bucket: ${AWS_S3_BUCKET:}
     region: ${AWS_S3_REGION:ap-northeast-2}
