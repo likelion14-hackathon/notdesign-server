@@ -1,98 +1,92 @@
-package com.likelionknu.notdesign.skinanalysis.service;
+package com.likelionknu.notdesign.analysis.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.likelionknu.notdesign.analysis.client.AnalyzeClient;
+import com.likelionknu.notdesign.analysis.client.S3Uploader;
+import com.likelionknu.notdesign.analysis.data.dto.response.AnalyzeAcceptedDto;
+import com.likelionknu.notdesign.analysis.data.dto.response.AnalyzeResultDto;
+import com.likelionknu.notdesign.analysis.data.dto.response.DiaryResultDto;
+import com.likelionknu.notdesign.analysis.exception.AnalysisResultNotFoundException;
 import com.likelionknu.notdesign.common.redis.RedisService;
-import com.likelionknu.notdesign.skinanalysis.client.AnalyzeClient;
-import com.likelionknu.notdesign.skinanalysis.client.dto.AnalyzeAcceptedDto;
-import com.likelionknu.notdesign.skinanalysis.data.dto.response.AnalyzeResultDto;
-import com.likelionknu.notdesign.skinanalysis.data.dto.response.DiaryResultDto;
-import com.likelionknu.notdesign.skinanalysis.exception.AnalysisResultNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-/**
- * 피부 이미지 분석(analyze)·체험 분석(diary) 연동 서비스.
- * - 요청: analyze 서버 호출 후 request_id 만 프론트에 반환(DB 저장 없음).
- * - 조회: 클라우드 Redis 의 {request_id}:analyze / {request_id}:diary 를 직접 읽어 status=done 이면 result 반환, 그 외 404.
- * analyze 서버가 결과를 평문 JSON 문자열로 저장하므로 String 으로 읽어 Jackson 으로 파싱한다.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SkinAnalysisService {
+public class AnalysisService {
     private static final String STATUS_DONE = "done";
-    // Spring Boot 4 는 Jackson 3(tools.jackson)로 전환되어 Jackson 2 ObjectMapper 빈이 자동 등록되지 않는다.
-    // Redis 평문 JSON 파싱 전용이라 별도 설정이 필요 없으므로 직접 인스턴스를 생성해 사용한다.
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final AnalyzeClient analyzeClient;
+    private final S3Uploader s3Uploader;
     private final RedisService redisService;
 
     /**
-     * 피부 이미지 분석을 요청하고 폴링용 request_id 를 반환한다.
+     * 이미지를 S3에 업로드한 뒤 피부 이미지 분석을 요청합니다.
      *
-     * @param imageUrl 공개 접근 가능한 얼굴 이미지 URL
-     * @return request_id
+     * @param image 분석할 얼굴 이미지 파일
+     * @return 결과 조회에 사용할 requestId
      */
-    public String requestAnalyze(String imageUrl) {
+    public String requestAnalyze(MultipartFile image) {
+        String imageUrl = s3Uploader.upload(image);
         AnalyzeAcceptedDto accepted = analyzeClient.requestAnalyze(imageUrl);
         log.info("[requestAnalyze] 분석 요청 수락: requestId={}", accepted.requestId());
         return accepted.requestId();
     }
 
     /**
-     * {request_id}:analyze 결과를 조회한다. done 이 아니면(키 없음/processing/failed) 404.
+     * 피부 이미지 분석 결과를 조회합니다. 분석이 완료되지 않았으면 조회할 수 없습니다.
      *
      * @param requestId 분석 요청 식별자
-     * @return analyze 결과(done 인 경우)
+     * @return 피부 이미지 분석 결과
      */
     public AnalyzeResultDto getAnalyzeResult(String requestId) {
         return readResult(requestId + ":analyze", requestId, AnalyzeResultDto.class);
     }
 
     /**
-     * 체험 피부 이미지 분석을 요청하고 폴링용 request_id 를 반환한다.
+     * 이미지를 S3에 업로드한 뒤 체험 피부 이미지 분석을 요청합니다.
      *
-     * @param imageUrl 공개 접근 가능한 얼굴 이미지 URL
-     * @return request_id
+     * @param image 분석할 얼굴 이미지 파일
+     * @return 결과 조회에 사용할 requestId
      */
-    public String requestDiary(String imageUrl) {
+    public String requestDiary(MultipartFile image) {
+        String imageUrl = s3Uploader.upload(image);
         AnalyzeAcceptedDto accepted = analyzeClient.requestDiary(imageUrl);
         log.info("[requestDiary] 체험 분석 요청 수락: requestId={}", accepted.requestId());
         return accepted.requestId();
     }
 
     /**
-     * {request_id}:diary 결과를 조회한다. done 이 아니면(키 없음/processing/failed) 404.
+     * 체험 피부 이미지 분석 결과를 조회합니다. 분석이 완료되지 않았으면 조회할 수 없습니다.
      *
      * @param requestId 분석 요청 식별자
-     * @return diary 결과(done 인 경우)
+     * @return 체험 피부 이미지 분석 결과
      */
     public DiaryResultDto getDiaryResult(String requestId) {
         return readResult(requestId + ":diary", requestId, DiaryResultDto.class);
     }
 
     private <T> T readResult(String redisKey, String requestId, Class<T> type) {
-        // StringRedisSerializer 로 저장된 평문 JSON 문자열을 읽는다.
         Object raw = redisService.getValues(redisKey);
         if (raw == null) {
-            // 아직 결과 없음(분석 진행 전/키 만료) → 404
             throw new AnalysisResultNotFoundException();
         }
 
         JsonNode root = parse(raw.toString(), requestId);
         String status = root.path("status").asText("");
         if (!STATUS_DONE.equals(status)) {
-            // processing / failed / 알 수 없음 → 404 (프론트가 계속 폴링)
             log.debug("[readResult] 아직 완료 아님: requestId={}, status={}", requestId, status);
             throw new AnalysisResultNotFoundException();
         }
 
         JsonNode resultNode = root.get("result");
         if (resultNode == null || resultNode.isNull()) {
-            log.error("[readResult] done 이지만 result 없음: requestId={}", requestId);
+            log.error("[readResult] done이지만 result 없음: requestId={}", requestId);
             throw new AnalysisResultNotFoundException();
         }
 

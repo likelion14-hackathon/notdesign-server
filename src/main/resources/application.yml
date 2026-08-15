@@ -8,6 +8,10 @@ spring:
   jpa:
     open-in-view: false
     database-platform: org.hibernate.dialect.MariaDBDialect
+  servlet:
+    multipart:
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:10MB}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:10MB}
 
 jwt:
   access-token:
@@ -26,3 +30,9 @@ kakao:
 services:
   analyze:
     url: ${SERVICES_ANALYZE_URL:http://localhost:8000}
+
+aws:
+  s3:
+    # 버킷 이름은 env로 주입. 자격증명은 표준 AWS env(AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY)로 읽는다.
+    bucket: ${AWS_S3_BUCKET:}
+    region: ${AWS_S3_REGION:ap-northeast-2}

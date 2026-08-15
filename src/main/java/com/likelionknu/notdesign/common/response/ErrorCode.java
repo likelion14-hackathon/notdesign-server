@@ -20,6 +20,7 @@ public enum ErrorCode {
     RESULT_ALREADY_IMPORTED("C4095", "새로운 측정 데이터가 없습니다.", 409),
     REPORT_GENERATION_FAILED("C5001", "리포트를 생성하지 못했습니다.", 500),
     PLAN_GENERATION_FAILED("C5002", "플랜을 생성하지 못했습니다.", 500),
+    IMAGE_UPLOAD_FAILED("C5003", "이미지 업로드에 실패했습니다.", 500),
     UNKNOWN_ERROR("C500", "오류가 발생하였습니다.", 500),
     ANALYZE_SERVER_ERROR("C502", "이미지 분석 서버 호출에 실패했습니다.", 502);
 
