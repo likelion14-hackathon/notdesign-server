@@ -27,6 +27,13 @@ public class Diary {
     @Column(name = "skin_tone")
     private Integer skinTone;
 
+    @Column
+    private Integer pores;
+
+    /**
+     * @deprecated 지표 변경으로 인한 삭제 예정
+     */
+    @Deprecated
     @Column(name = "tightness_and_dryness")
     private Integer tightnessAndDryness;
 
