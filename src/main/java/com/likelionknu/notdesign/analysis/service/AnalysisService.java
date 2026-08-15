@@ -19,13 +19,18 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class AnalysisService {
     private static final String STATUS_DONE = "done";
-    // Spring Boot 4(Jackson 3)에서는 Jackson 2 ObjectMapper 빈이 자동 등록되지 않아 직접 생성한다.
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final AnalyzeClient analyzeClient;
     private final S3Uploader s3Uploader;
     private final RedisService redisService;
 
+    /**
+     * 이미지를 S3에 업로드한 뒤 피부 이미지 분석을 요청합니다.
+     *
+     * @param image 분석할 얼굴 이미지 파일
+     * @return 결과 조회에 사용할 requestId
+     */
     public String requestAnalyze(MultipartFile image) {
         String imageUrl = s3Uploader.upload(image);
         AnalyzeAcceptedDto accepted = analyzeClient.requestAnalyze(imageUrl);
@@ -33,10 +38,22 @@ public class AnalysisService {
         return accepted.requestId();
     }
 
+    /**
+     * 피부 이미지 분석 결과를 조회합니다. 분석이 완료되지 않았으면 조회할 수 없습니다.
+     *
+     * @param requestId 분석 요청 식별자
+     * @return 피부 이미지 분석 결과
+     */
     public AnalyzeResultDto getAnalyzeResult(String requestId) {
         return readResult(requestId + ":analyze", requestId, AnalyzeResultDto.class);
     }
 
+    /**
+     * 이미지를 S3에 업로드한 뒤 체험 피부 이미지 분석을 요청합니다.
+     *
+     * @param image 분석할 얼굴 이미지 파일
+     * @return 결과 조회에 사용할 requestId
+     */
     public String requestDiary(MultipartFile image) {
         String imageUrl = s3Uploader.upload(image);
         AnalyzeAcceptedDto accepted = analyzeClient.requestDiary(imageUrl);
@@ -44,11 +61,16 @@ public class AnalysisService {
         return accepted.requestId();
     }
 
+    /**
+     * 체험 피부 이미지 분석 결과를 조회합니다. 분석이 완료되지 않았으면 조회할 수 없습니다.
+     *
+     * @param requestId 분석 요청 식별자
+     * @return 체험 피부 이미지 분석 결과
+     */
     public DiaryResultDto getDiaryResult(String requestId) {
         return readResult(requestId + ":diary", requestId, DiaryResultDto.class);
     }
 
-    // Redis의 평문 JSON을 읽어 status=done이면 result를 반환, 그 외(없음/processing/failed)는 404.
     private <T> T readResult(String redisKey, String requestId, Class<T> type) {
         Object raw = redisService.getValues(redisKey);
         if (raw == null) {

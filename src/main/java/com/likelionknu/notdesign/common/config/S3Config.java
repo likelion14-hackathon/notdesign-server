@@ -8,7 +8,6 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
-// 자격증명은 DefaultCredentialsProvider가 실제 업로드 시점에 로딩하므로, 값이 없어도 부팅은 정상 진행된다.
 @Configuration
 public class S3Config {
 

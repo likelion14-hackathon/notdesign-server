@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-// analyze FastAPI 서버 호출 클라이언트. POST로 분석을 시작시키고 202(request_id) 응답을 받는다.
 @Slf4j
 @Component
 public class AnalyzeClient {

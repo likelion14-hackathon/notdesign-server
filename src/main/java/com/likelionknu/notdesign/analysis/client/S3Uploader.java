@@ -19,7 +19,6 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
-// 이미지 파일을 S3에 업로드하고 analyze 서버가 받을 presigned GET URL(10분)을 반환한다. 버킷은 비공개 유지.
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -34,6 +33,12 @@ public class S3Uploader {
     @Value("${aws.s3.bucket}")
     private String bucket;
 
+    /**
+     * 이미지 파일을 검증하고 S3에 업로드한 뒤 presigned GET URL을 반환합니다.
+     *
+     * @param file 업로드할 이미지 파일
+     * @return 분석 서버가 접근할 수 있는 presigned URL
+     */
     public String upload(MultipartFile file) {
         validateImage(file);
 
@@ -56,7 +61,6 @@ public class S3Uploader {
         return url;
     }
 
-    // 빈 파일이거나, image/* 가 아니거나, 허용 확장자(jpg, jpeg, png, webp)가 아니면 거른다.
     private void validateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             log.error("[S3Uploader] 업로드할 이미지가 비어있습니다.");
@@ -83,7 +87,6 @@ public class S3Uploader {
         return s3Presigner.presignGetObject(presignRequest).url().toString();
     }
 
-    // 확장자를 소문자로(점 제외) 반환. 없으면 빈 문자열.
     private String extension(String originalFilename) {
         if (!StringUtils.hasText(originalFilename)) {
             return "";
