@@ -26,7 +26,7 @@ public class PlanCreateRequestDto {
 
     @DecimalMin("0.0")
     @DecimalMax("10.0")
-    private Double dryness;
+    private Double pores;
 
     @DecimalMin("0.0")
     @DecimalMax("10.0")
