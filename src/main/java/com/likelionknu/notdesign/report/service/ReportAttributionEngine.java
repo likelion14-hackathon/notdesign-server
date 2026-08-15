@@ -155,8 +155,8 @@ public class ReportAttributionEngine {
             if (diary.getSkinTone() != null) {
                 badness.put(ImprovementItem.PIGMENTATION, 10 - diary.getSkinTone());
             }
-            if (diary.getTightnessAndDryness() != null) {
-                badness.put(ImprovementItem.HYDRATION, diary.getTightnessAndDryness());
+            if (diary.getPores() != null) {
+                badness.put(ImprovementItem.PORES, diary.getPores());
             }
             if (diary.getFlushing() != null) {
                 badness.put(ImprovementItem.ERYTHEMA, diary.getFlushing());

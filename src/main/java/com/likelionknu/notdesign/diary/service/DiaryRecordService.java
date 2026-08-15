@@ -92,7 +92,7 @@ public class DiaryRecordService {
         Diary diary = Diary.builder()
                 .process(planProcess)
                 .skinTone(diaryCreateRequestDto.getSkinTone())
-                .tightnessAndDryness(diaryCreateRequestDto.getTightnessAndDryness())
+                .pores(diaryCreateRequestDto.getPores())
                 .flushing(diaryCreateRequestDto.getFlushing())
                 .comment(diaryCreateRequestDto.getComment())
                 .recordedAt(LocalDateTime.now())
