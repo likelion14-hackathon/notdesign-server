@@ -88,7 +88,7 @@ public class PlanGenerationService {
                         .findFirst()
                         .orElseThrow(ResultNotFoundException::new);
                 yield planPromptBuilder.buildUserNew(
-                        result.getPigmentation(), result.getHydration(), result.getErythema(), request.getMonthlyBudget());
+                        result.getPigmentation(), result.getPores(), result.getErythema(), request.getMonthlyBudget());
             }
             case NEXT -> buildNextPrompt(email, catalog);
             case ADJUST -> buildAdjustPrompt(email, catalog);
@@ -111,7 +111,7 @@ public class PlanGenerationService {
         Result measured = report.getResult();
         return List.of(
                 toMetricChange("색소침착", measured.getPigmentation(), report.getPigmentationDelta()),
-                toMetricChange("수분력", measured.getHydration(), report.getHydrationDelta()),
+                toMetricChange("모공", measured.getPores(), report.getPoresDelta()),
                 toMetricChange("홍조", measured.getErythema(), report.getErythemaDelta()));
     }
 
@@ -196,13 +196,13 @@ public class PlanGenerationService {
 
     private String buildTrialPrompt(PlanCreateRequestDto request) {
         Double skinTone = request.getSkinTone();
-        Double dryness = request.getDryness();
+        Double pores = request.getPores();
         Double redness = request.getRedness();
-        if (skinTone == null || dryness == null || redness == null) {
-            throw new PlanGenerationFailedException("TRIAL 모드는 skinTone·dryness·redness 가 모두 필요합니다.");
+        if (skinTone == null || pores == null || redness == null) {
+            throw new PlanGenerationFailedException("TRIAL 모드는 skinTone·pores·redness 가 모두 필요합니다.");
         }
 
-        return planPromptBuilder.buildUserTrial(skinTone, dryness, redness);
+        return planPromptBuilder.buildUserTrial(skinTone, pores, redness);
     }
 
     private PlanGenerationAiResponse generateWithRetry(String systemPrompt, String userPrompt,

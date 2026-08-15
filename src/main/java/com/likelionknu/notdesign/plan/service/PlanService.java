@@ -103,7 +103,7 @@ public class PlanService {
                 .stream().findFirst()
                 .map(result -> PlanDetailResponseDto.Metrics.builder()
                         .pigmentation(result.getPigmentation())
-                        .hydration(result.getHydration())
+                        .pores(result.getPores())
                         .erythema(result.getErythema())
                         .build())
                 .orElse(null);
