@@ -20,7 +20,7 @@ public class DiaryCreateRequestDto {
     @NotNull
     @Min(0)
     @Max(10)
-    private Integer tightnessAndDryness;
+    private Integer pores;
 
     @NotNull
     @Min(0)

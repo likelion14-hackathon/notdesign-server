@@ -70,11 +70,11 @@ public class ReportService {
                 .build());
 
         metrics.add(ReportMetricResponseDto.builder()
-                .improvement(ImprovementItem.HYDRATION)
-                .improvementName(ImprovementItem.HYDRATION.getDisplayName())
-                .before(before.getHydration())
-                .after(after.getHydration())
-                .delta(report.getHydrationDelta())
+                .improvement(ImprovementItem.PORES)
+                .improvementName(ImprovementItem.PORES.getDisplayName())
+                .before(before.getPores())
+                .after(after.getPores())
+                .delta(report.getPoresDelta())
                 .build());
 
         metrics.add(ReportMetricResponseDto.builder()

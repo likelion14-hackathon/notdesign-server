@@ -22,7 +22,7 @@ public class PlanDetailResponseDto {
     @AllArgsConstructor
     public static class Metrics {
         private Integer pigmentation;
-        private Integer hydration;
+        private Integer pores;
         private Integer erythema;
     }
 }

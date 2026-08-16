@@ -21,7 +21,7 @@ public class PlanCatalogService {
     private final PlanItemEffectRepository planItemEffectRepository;
 
     public record CatalogEntry(Long id, String name, PlanCategory category, int price,
-                               BigDecimal pigmentation, BigDecimal hydration, BigDecimal erythema) {
+                               BigDecimal pigmentation, BigDecimal pores, BigDecimal erythema) {
     }
 
     public record Catalog(List<CatalogEntry> entries, Map<Long, CatalogEntry> byAnyId,
@@ -74,7 +74,7 @@ public class PlanCatalogService {
                 any.getCategory(),
                 any.getPrice(),
                 weights.getOrDefault(ImprovementItem.PIGMENTATION, BigDecimal.ZERO),
-                weights.getOrDefault(ImprovementItem.HYDRATION, BigDecimal.ZERO),
+                weights.getOrDefault(ImprovementItem.PORES, BigDecimal.ZERO),
                 weights.getOrDefault(ImprovementItem.ERYTHEMA, BigDecimal.ZERO));
     }
 }

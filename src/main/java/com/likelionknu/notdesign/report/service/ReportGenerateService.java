@@ -122,7 +122,7 @@ public class ReportGenerateService {
         Map<ImprovementItem, Integer> deltas = new EnumMap<>(ImprovementItem.class);
 
         deltas.put(ImprovementItem.PIGMENTATION, measured.getPigmentation() - baseline.getPigmentation());
-        deltas.put(ImprovementItem.HYDRATION, measured.getHydration() - baseline.getHydration());
+        deltas.put(ImprovementItem.PORES, measured.getPores() - baseline.getPores());
         deltas.put(ImprovementItem.ERYTHEMA, measured.getErythema() - baseline.getErythema());
 
         return deltas;
@@ -156,7 +156,7 @@ public class ReportGenerateService {
                 .nextPlanSuggestion(sentences.nextPlanSuggestion())
                 .nextPlanPrice(isFinal ? computeNextPlanPrice(plan, attributions) : null)
                 .pigmentationDelta(deltas.get(ImprovementItem.PIGMENTATION))
-                .hydrationDelta(deltas.get(ImprovementItem.HYDRATION))
+                .poresDelta(deltas.get(ImprovementItem.PORES))
                 .erythemaDelta(deltas.get(ImprovementItem.ERYTHEMA))
                 .build());
 
@@ -210,8 +210,8 @@ public class ReportGenerateService {
 
         text.append(describeMetric("색소침착", baseline.getPigmentation(), measured.getPigmentation(),
                 deltas.get(ImprovementItem.PIGMENTATION)));
-        text.append(describeMetric("수분력", baseline.getHydration(), measured.getHydration(),
-                deltas.get(ImprovementItem.HYDRATION)));
+        text.append(describeMetric("모공", baseline.getPores(), measured.getPores(),
+                deltas.get(ImprovementItem.PORES)));
         text.append(describeMetric("홍조", baseline.getErythema(), measured.getErythema(),
                 deltas.get(ImprovementItem.ERYTHEMA)));
 
@@ -271,7 +271,7 @@ public class ReportGenerateService {
 
             text.append("- ").append(diary.getRecordedAt().toLocalDate())
                     .append(" 피부톤 ").append(diary.getSkinTone())
-                    .append(", 당김 ").append(diary.getTightnessAndDryness())
+                    .append(", 모공 ").append(diary.getPores())
                     .append(", 홍조 ").append(diary.getFlushing())
                     .append(" · ").append(diary.getComment()).append("\n");
         }

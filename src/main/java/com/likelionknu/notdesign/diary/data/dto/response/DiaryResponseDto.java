@@ -10,7 +10,7 @@ import java.util.List;
 public class DiaryResponseDto {
     private Long diaryId;
     private Integer skinTone;
-    private Integer tightnessAndDryness;
+    private Integer pores;
     private Integer flushing;
     private String comment;
     private List<DiaryTodoResponseDto> todos;

@@ -35,18 +35,17 @@ public class PlanPromptBuilder {
 
             # 지표 읽는 법
 
-            세 지표는 좋고 나쁨의 방향이 다르다. 우선순위는 "나쁜 정도"로 환산해서 비교한다.
+            세 지표는 모두 낮을수록 좋은 지표다. 값이 클수록 나쁘다. 값 그대로 "나쁜 정도"로 비교한다.
 
-            - 색소침착 나쁜 정도 = pigmentation      (낮을수록 좋은 지표)
-            - 홍조 나쁜 정도 = erythema             (낮을수록 좋은 지표)
-            - 수분력 나쁜 정도 = 100 - hydration     (높을수록 좋은 지표)
+            - 색소침착 나쁜 정도 = pigmentation
+            - 홍조 나쁜 정도 = erythema
+            - 모공 나쁜 정도 = pores
 
-            환산값이 가장 큰 지표가 1순위, 두 번째가 2순위다.
-            숫자 크기만 보고 비교하지 마라. 수분력은 반드시 100 에서 뺀 뒤에 비교한다.
+            값이 가장 큰 지표가 1순위, 두 번째가 2순위다.
 
-            예) 색소침착 62, 수분력 55, 홍조 41 이면
-                나쁜 정도는 색소침착 62 > 수분력 45 > 홍조 41 이므로
-                1순위는 색소침착, 2순위는 수분력이다.
+            예) 색소침착 62, 모공 55, 홍조 41 이면
+                나쁜 정도는 색소침착 62 > 모공 55 > 홍조 41 이므로
+                1순위는 색소침착, 2순위는 모공이다.
 
             # 항목 구성
 
@@ -98,14 +97,14 @@ public class PlanPromptBuilder {
             frequency: 실행 주기. 예 "4주 간격 3회", "매일", "매일 1회", "아침저녁 2회"
 
             planSummary: 1순위와 2순위 지표가 드러나는 한 문장, 20자 내외.
-            - 예: "색소 개선을 1순위로, 수분 부족을 함께 개선해요"
+            - 예: "색소 개선을 1순위로, 모공을 함께 개선해요"
 
             의료 서비스가 아니다. 진단하지 않고 질환명을 쓰지 않는다.
             "치료", "완치", "개선 보장" 대신 "예상돼요", "기대돼요" 같은 추정 표현을 쓴다.
 
             # 작업 순서
 
-            1. 위 환산식으로 세 지표의 나쁜 정도를 구하고 1순위와 2순위를 정한다.
+            1. 위 방식으로 세 지표의 나쁜 정도를 구하고 1순위와 2순위를 정한다.
             2. 목록에서 1순위 지표 가중치가 가장 높은 PROCEDURE 를 고르고 1주차에 배치한다.
             3. 2순위 지표를 겨냥하되 1순위와 시작 주차가 겹치지 않는 항목을 고른다.
             4. 매일 체크 항목을 2~3개 채운다. 매일 지키기 쉬운 것을 우선한다.
@@ -118,7 +117,7 @@ public class PlanPromptBuilder {
             # 사용 가능한 관리 항목
 
             itemEffectId 는 아래 목록의 id 다.
-            pigmentation / hydration / erythema 는 그 항목이 해당 지표에 얼마나 강하게 작용하는지다 (0.00~0.60).
+            pigmentation / pores / erythema 는 그 항목이 해당 지표에 얼마나 강하게 작용하는지다 (0.00~0.60).
             """;
 
     private static final String SYSTEM_TRIAL_RULES = """
@@ -150,9 +149,9 @@ public class PlanPromptBuilder {
             간이 분석 결과는 세 지표 모두 "나쁜 정도"로 0~100 환산되어 온다. 값이 클수록 나쁘다.
             방향 환산은 이미 되어 있으니 크기만 비교하면 된다.
 
-            - 색소침착 나쁜 정도 / 수분 부족 정도 / 홍조 나쁜 정도
+            - 색소침착 나쁜 정도 / 모공 나쁜 정도 / 홍조 나쁜 정도
             - 가장 큰 값이 1순위, 두 번째가 2순위다.
-            - 목록의 pigmentation / hydration / erythema 가중치가 각각 색소침착 / 수분 부족 / 홍조에 대응한다.
+            - 목록의 pigmentation / pores / erythema 가중치가 각각 색소침착 / 모공 / 홍조에 대응한다.
 
             # 항목 구성
 
@@ -210,7 +209,7 @@ public class PlanPromptBuilder {
             # 사용 가능한 관리 항목
 
             itemEffectId 는 아래 목록의 id 다.
-            pigmentation / hydration / erythema 는 그 항목이 해당 지표에 얼마나 강하게 작용하는지다 (0.00~0.60).
+            pigmentation / pores / erythema 는 그 항목이 해당 지표에 얼마나 강하게 작용하는지다 (0.00~0.60).
             """;
 
     public String buildSystem(Catalog catalog) {
@@ -221,12 +220,12 @@ public class PlanPromptBuilder {
         return SYSTEM_TRIAL_RULES + "\n" + serializeCatalog(catalog);
     }
 
-    public String buildUserNew(int pigmentation, int hydration, int erythema, Integer monthlyBudget) {
+    public String buildUserNew(int pigmentation, int pores, int erythema, Integer monthlyBudget) {
         StringBuilder builder = new StringBuilder();
         builder.append("# 모드\nNEW\n\n");
         builder.append("# 측정 결과\n")
                 .append("- 색소침착 ").append(pigmentation).append("/100\n")
-                .append("- 수분력 ").append(hydration).append("/100\n")
+                .append("- 모공 ").append(pores).append("/100\n")
                 .append("- 홍조 ").append(erythema).append("/100\n");
 
         if (monthlyBudget != null) {
@@ -237,12 +236,12 @@ public class PlanPromptBuilder {
         return builder.toString();
     }
 
-    public String buildUserTrial(double skinTone, double dryness, double redness) {
+    public String buildUserTrial(double skinTone, double pores, double redness) {
         StringBuilder builder = new StringBuilder();
         builder.append("# 모드\nTRIAL (1주 체험)\n\n");
         builder.append("# 셀카 간이 분석 결과 (나쁜 정도, 0~100, 클수록 나쁨)\n")
                 .append("- 색소침착 나쁜 정도 ").append(Math.round((10 - skinTone) * 10)).append("/100\n")
-                .append("- 수분 부족 정도 ").append(Math.round(dryness * 10)).append("/100\n")
+                .append("- 모공 나쁜 정도 ").append(Math.round(pores * 10)).append("/100\n")
                 .append("- 홍조 나쁜 정도 ").append(Math.round(redness * 10)).append("/100\n");
 
         return builder.toString();
@@ -401,7 +400,7 @@ public class PlanPromptBuilder {
                     .append("\", \"category\": \"").append(entry.category().name())
                     .append("\", \"price\": ").append(entry.price())
                     .append(", \"pigmentation\": ").append(entry.pigmentation().toPlainString())
-                    .append(", \"hydration\": ").append(entry.hydration().toPlainString())
+                    .append(", \"pores\": ").append(entry.pores().toPlainString())
                     .append(", \"erythema\": ").append(entry.erythema().toPlainString())
                     .append("}");
             builder.append(index < entries.size() - 1 ? ",\n" : "\n");

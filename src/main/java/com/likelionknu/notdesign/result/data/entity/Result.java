@@ -40,6 +40,13 @@ public class Result {
     private Integer erythema;
 
     @Column
+    private Integer pores;
+
+    /**
+     * @deprecated 지표 변경으로 인한 삭제 예정
+     */
+    @Deprecated
+    @Column
     private Integer hydration;
 
     @Column(name = "measured_at", nullable = false)

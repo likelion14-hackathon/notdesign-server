@@ -77,7 +77,7 @@ public class DiaryService {
      *
      * @param email 조회 대상이 되는 사용자
      * @param recordedDate 특정 일자(0000-00-00)
-     * @return 사용자가 입력한 피부톤, 당김, 건조함 정도 등의 기록
+     * @return 사용자가 입력한 피부톤, 모공, 붉은기 정도 등의 기록
      */
     @Transactional(readOnly = true)
     public DiaryResponseDto getDiary(String email, LocalDate recordedDate) {
@@ -109,7 +109,7 @@ public class DiaryService {
         return DiaryResponseDto.builder()
                 .diaryId(diary.getId())
                 .skinTone(diary.getSkinTone())
-                .tightnessAndDryness(diary.getTightnessAndDryness())
+                .pores(diary.getPores())
                 .flushing(diary.getFlushing())
                 .comment(diary.getComment())
                 .todos(todos)
