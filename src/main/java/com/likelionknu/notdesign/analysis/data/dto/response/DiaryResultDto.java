@@ -5,7 +5,7 @@ import java.util.Map;
 
 public record DiaryResultDto(
         @JsonProperty("skin_tone") double skinTone,
-        double dryness,
+        double pores,
         double redness,
         Map<String, Double> confidence
 ) {

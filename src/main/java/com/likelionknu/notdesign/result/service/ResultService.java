@@ -52,7 +52,7 @@ public class ResultService {
                 .clinic(clinic)
                 .pigmentation(dummy.getPigmentation())
                 .erythema(dummy.getErythema())
-                .hydration(dummy.getHydration())
+                .pores(dummy.getPores())
                 .measuredAt(dummy.getMeasuredAt())
                 .build();
 

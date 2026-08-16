@@ -16,7 +16,7 @@ public class ResultResponseDto {
     private final Long planId;
     private final Integer pigmentation;
     private final Integer erythema;
-    private final Integer hydration;
+    private final Integer pores;
     private final LocalDateTime measuredAt;
     private final LocalDateTime createdAt;
 
@@ -31,7 +31,7 @@ public class ResultResponseDto {
                 .planId(plan != null ? plan.getId() : null)
                 .pigmentation(result.getPigmentation())
                 .erythema(result.getErythema())
-                .hydration(result.getHydration())
+                .pores(result.getPores())
                 .measuredAt(result.getMeasuredAt())
                 .createdAt(result.getCreatedAt())
                 .build();
