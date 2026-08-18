@@ -39,3 +39,7 @@ out/
 ### macOS ###
 .DS_Store
 **/.DS_Store
+
+### 로컬 문서 (노션용 - 커밋 금지) ###
+API명세서*.md
+SKIN_ANALYSIS_INTEGRATION.md
