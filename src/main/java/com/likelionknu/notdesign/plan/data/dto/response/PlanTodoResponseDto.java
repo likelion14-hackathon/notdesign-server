@@ -14,6 +14,6 @@ public class PlanTodoResponseDto {
     private Long checklistId;
     private PlanCategory category;
     private String categoryName;
-    private String name;
+    private String content;
     private Boolean done;
 }
