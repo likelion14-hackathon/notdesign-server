@@ -1,4 +1,4 @@
-# develop push 시 Docker 이미지 빌드 → GHCR 푸시
+# develop push 시 Docker 이미지 빌드 → GHCR 푸시 → 서버 자동 배포(CD)
 name: CI
 
 on:
@@ -32,3 +32,24 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # 이미지 푸시 후 서버에 SSH 접속 → 최신 이미지로 컨테이너 교체
+  deploy:
+    needs: build-and-push        # 빌드·푸시 성공해야 배포
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1   # SSH 원격 명령 실행
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # 서버는 사전에 ghcr.io 로그인·/root/proof.env 준비돼 있어야 함
+          script: |
+            docker pull ghcr.io/${{ github.repository }}:latest
+            docker rm -f proof || true       # 기존 컨테이너 제거(없어도 통과)
+            docker run -d --name proof \
+              --network host \
+              --env-file /root/proof.env \
+              --restart unless-stopped \
+              ghcr.io/${{ github.repository }}:latest
+            docker image prune -f            # 이전 이미지 정리(디스크 확보)
