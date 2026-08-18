@@ -55,14 +55,14 @@ public class SecurityConfiguration {
 
         httpSecurity.authorizeHttpRequests(authorize ->
                 authorize.requestMatchers(
-                                "/api/v1/auth/login/**",
+                                "/api/auth/login/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
-                        .requestMatchers("/api/v1/product/**").hasRole("USER")
+                        .requestMatchers("/api/product/**").hasRole("USER")
                         .anyRequest().authenticated()
         );
 
