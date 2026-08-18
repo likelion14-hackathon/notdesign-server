@@ -234,7 +234,7 @@ public class PlanGenerationService {
                     return PlanDetailItemResponseDto.builder()
                             .category(entry.category())
                             .categoryName(entry.category().getDisplayName())
-                            .name(entry.name())
+                            .content(entry.name())
                             .frequency(item.frequency())
                             .price(entry.price())
                             .weeks(item.weeks())

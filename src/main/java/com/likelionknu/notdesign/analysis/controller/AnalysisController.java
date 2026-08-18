@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/v1/analyses")
+@RequestMapping("/api/analyses")
 @RequiredArgsConstructor
 public class AnalysisController {
     private final AnalysisService analysisService;

@@ -318,7 +318,7 @@ public class PlanService {
         return PlanDetailItemResponseDto.builder()
                 .category(item.getCategory())
                 .categoryName(item.getCategory().getDisplayName())
-                .name(item.getName())
+                .content(item.getName())
                 .frequency(item.getFrequency())
                 .price(item.getPrice())
                 .weeks(weeksByTimeline.getOrDefault(timeline.getId(), List.of()))
@@ -333,7 +333,7 @@ public class PlanService {
                 .checklistId(checklist.getId())
                 .category(item.getCategory())
                 .categoryName(item.getCategory().getDisplayName())
-                .name(item.getName())
+                .content(item.getName())
                 .done(false)
                 .build();
     }

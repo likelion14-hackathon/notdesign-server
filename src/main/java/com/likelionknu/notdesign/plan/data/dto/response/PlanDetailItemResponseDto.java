@@ -14,7 +14,7 @@ import java.util.List;
 public class PlanDetailItemResponseDto {
     private PlanCategory category;
     private String categoryName;
-    private String name;
+    private String content;
     private String frequency;
     private Integer price;
     private List<Integer> weeks;
