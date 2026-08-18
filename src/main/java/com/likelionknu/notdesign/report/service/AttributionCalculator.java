@@ -39,7 +39,7 @@ public class AttributionCalculator {
                                               int elapsedWeeks, List<DailyCondition> conditions) {
         List<Attribution> attributions = new ArrayList<>();
 
-        for (ImprovementItem improvement : ImprovementItem.values()) {
+        for (ImprovementItem improvement : ImprovementItem.activeValues()) {
             attributions.addAll(attributeMetric(items, improvement,
                     deltas.getOrDefault(improvement, 0), elapsedWeeks, conditions));
         }

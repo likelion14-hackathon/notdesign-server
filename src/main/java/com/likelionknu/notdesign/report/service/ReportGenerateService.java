@@ -217,7 +217,7 @@ public class ReportGenerateService {
 
         text.append("\n# 항목별 기여도 (서버 계산 완료)\n");
 
-        for (ImprovementItem improvement : ImprovementItem.values()) {
+        for (ImprovementItem improvement : ImprovementItem.activeValues()) {
             text.append("- ").append(improvement.getDisplayName()).append("\n");
 
             for (Attribution attribution : attributions) {
