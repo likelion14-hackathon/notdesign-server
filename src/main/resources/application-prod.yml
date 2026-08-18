@@ -25,6 +25,10 @@ spring:
         format_sql: false
         show_sql: false
 
+server:
+  address: ${SERVER_ADDRESS:0.0.0.0}
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:framework}
+
 jwt:
   secret: ${JWT_SECRET_KEY}
 
