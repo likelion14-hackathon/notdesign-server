@@ -70,7 +70,7 @@ public class ReportGenerateService {
                 .orElseThrow(() -> new PlanProcessNotFoundException(user.getId()));
 
         Plan plan = process.getActivePlan();
-        Result measured = getMeasured(user);
+        Result measured = getMeasured(user, process);
 
         LocalDate measuredDate = measured.getMeasuredAt().toLocalDate();
         int elapsedWeeks = countElapsedWeeks(process.getStartedAt(), measuredDate);
@@ -91,20 +91,20 @@ public class ReportGenerateService {
         return reportService.getReport(email, report.getId());
     }
 
-    private Result getMeasured(User user) {
+    private Result getMeasured(User user, PlanProcess process) {
         Result measured = resultRepository.findFirstByUser_IdOrderByMeasuredAtDesc(user.getId())
-                .orElseGet(() -> importDummy(user, null));
+                .orElseGet(() -> importDummy(user, process, null));
 
         if (reportRepository.existsByResult_Id(measured.getId())) {
-            return importDummy(user, measured.getMeasuredAt());
+            return importDummy(user, process, measured.getMeasuredAt());
         }
 
         return measured;
     }
 
-    private Result importDummy(User user, LocalDateTime after) {
+    private Result importDummy(User user, PlanProcess process, LocalDateTime after) {
         try {
-            return resultService.importDummy(user, null, after);
+            return resultService.importDummyOrGenerate(user, after, process.getStartedAt());
         } catch (com.likelionknu.notdesign.result.data.exception.ResultNotFoundException e) {
             throw new ResultNotImportedException(user.getId());
         }

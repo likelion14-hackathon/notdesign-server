@@ -11,7 +11,10 @@ import com.likelionknu.notdesign.result.data.repository.ResultRepository;
 import com.likelionknu.notdesign.user.data.entity.User;
 import com.likelionknu.notdesign.user.data.exception.UserNotFoundException;
 import com.likelionknu.notdesign.user.data.repository.UserRepository;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class ResultService {
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final double WEEKLY_IMPROVEMENT_RATE = 0.02;
+
     private final ResultRepository resultRepository;
     private final ResultDummyRepository resultDummyRepository;
     private final ClinicRepository clinicRepository;
@@ -51,8 +57,18 @@ public class ResultService {
                     return new ResultNotFoundException();
                 });
 
-        Clinic clinic = resolveClinic(clinicId, dummy);
+        return saveResult(user, resolveClinic(clinicId, dummy), dummy);
+    }
 
+    @Transactional
+    public Result importDummyOrGenerate(User user, LocalDateTime after, LocalDate cycleStartedAt) {
+        ResultDummy dummy = findDummy(user, after)
+                .orElseGet(() -> resultDummyRepository.save(generateDummy(user, cycleStartedAt)));
+
+        return saveResult(user, dummy.getClinic(), dummy);
+    }
+
+    private Result saveResult(User user, Clinic clinic, ResultDummy dummy) {
         Result result = Result.builder()
                 .user(user)
                 .clinic(clinic)
@@ -66,6 +82,46 @@ public class ResultService {
         log.info("[importDummy] 측정 결과 생성: resultId={}, userId={}", saved.getId(), user.getId());
 
         return saved;
+    }
+
+    private ResultDummy generateDummy(User user, LocalDate cycleStartedAt) {
+        LocalDateTime measuredAt = LocalDateTime.now(KST);
+
+        Result latest = resultRepository.findFirstByUser_IdOrderByMeasuredAtDesc(user.getId())
+                .orElseThrow(() -> {
+                    log.error("[generateDummy] 기준으로 삼을 측정값 없음: userId={}", user.getId());
+                    return new ResultNotFoundException();
+                });
+
+        double ratio = improvementRatio(cycleStartedAt, measuredAt.toLocalDate());
+
+        ResultDummy dummy = ResultDummy.builder()
+                .user(user)
+                .clinic(latest.getClinic())
+                .pigmentation(improve(latest.getPigmentation(), ratio))
+                .erythema(improve(latest.getErythema(), ratio))
+                .pores(improve(latest.getPores(), ratio))
+                .measuredAt(measuredAt)
+                .build();
+
+        log.info("[generateDummy] 더미 측정값 자동 생성: userId={}, 기준 resultId={}, 개선율={}",
+                user.getId(), latest.getId(), 1 - ratio);
+
+        return dummy;
+    }
+
+    private double improvementRatio(LocalDate cycleStartedAt, LocalDate measuredDate) {
+        long elapsedWeeks = Math.max(0, ChronoUnit.WEEKS.between(cycleStartedAt, measuredDate));
+
+        return Math.max(0, 1 - WEEKLY_IMPROVEMENT_RATE * elapsedWeeks);
+    }
+
+    private Integer improve(Integer value, double ratio) {
+        if (value == null) {
+            return null;
+        }
+
+        return Math.max(0, (int) Math.round(value * ratio));
     }
 
     /**
