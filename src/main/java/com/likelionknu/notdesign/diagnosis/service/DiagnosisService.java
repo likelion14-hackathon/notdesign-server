@@ -30,7 +30,7 @@ public class DiagnosisService {
      *
      * @param email 진단을 요청한 사용자
      * @param request 시술·제품 지출과 개선 체감도·기여도 파악 응답
-     * @return 총 지출, 월 평균, 등급, 낭비율·낭비액과 진단 문구
+     * @return 총 지출, 월 평균, 등급, 낭비액
      */
     @Transactional
     public DiagnosisResponseDto createDiagnosis(String email, DiagnosisCreateRequestDto request) {
@@ -64,10 +64,7 @@ public class DiagnosisService {
                 .monthlyAverage(monthlyAverage)
                 .grade(grade)
                 .gradeName(grade.getDisplayName())
-                .wasteRate(wasteRate)
                 .wasteAmount(wasteAmount)
-                .problemDiagnosis(grade.getProblemDiagnosis())
-                .wasteDescription(grade.formatWasteDescription(wasteRate, wasteAmount))
                 .build();
     }
 }

@@ -13,8 +13,5 @@ public class DiagnosisResponseDto {
     private Integer monthlyAverage;
     private UnderstandingGrade grade;
     private String gradeName;
-    private Integer wasteRate;
     private Integer wasteAmount;
-    private String problemDiagnosis;
-    private String wasteDescription;
 }
