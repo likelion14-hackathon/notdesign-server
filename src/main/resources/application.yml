@@ -35,6 +35,9 @@ services:
     url: ${SERVICES_ANALYZE_URL:http://localhost:8000}
 
 aws:
+  credentials:
+    access-key: ${AWS_ACCESS_KEY_ID:}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:}
   s3:
     bucket: ${AWS_S3_BUCKET:}
     region: ${AWS_S3_REGION:ap-northeast-2}
