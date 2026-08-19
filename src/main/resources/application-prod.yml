@@ -42,6 +42,7 @@ aws:
 services:
   analyze:
     url: ${SERVICES_ANALYZE_URL}
+    region: ${AWS_S3_REGION}
 
 logging:
   level:
