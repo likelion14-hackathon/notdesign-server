@@ -24,8 +24,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -44,14 +47,23 @@ public class ReportService {
         }
     }
 
+    public Optional<Result> findBaseline(Long userId, LocalDate cycleStartedAt, Long excludeResultId) {
+        LocalDateTime cycleStart = cycleStartedAt.atStartOfDay();
+
+        return resultRepository
+                .findFirstByUser_IdAndMeasuredAtGreaterThanEqualOrderByMeasuredAtAsc(userId, cycleStart)
+                .filter(result -> !result.getId().equals(excludeResultId))
+                .or(() -> resultRepository
+                        .findFirstByUser_IdAndMeasuredAtLessThanOrderByMeasuredAtDesc(userId, cycleStart))
+                .filter(result -> !result.getId().equals(excludeResultId));
+    }
+
     private Result getBaseline(Report report) {
         Long planId = report.getPlan().getId();
         PlanProcess process = planProcessRepository.findFirstByPlan_IdOrFuturePlan_Id(planId, planId)
                 .orElseThrow(() -> new ResultNotFoundException(planId));
 
-        return resultRepository
-                .findFirstByUser_IdAndMeasuredAtGreaterThanEqualOrderByMeasuredAtAsc(
-                        process.getUser().getId(), process.getStartedAt().atStartOfDay())
+        return findBaseline(process.getUser().getId(), process.getStartedAt(), report.getResult().getId())
                 .orElseThrow(() -> new ResultNotFoundException(planId));
     }
 

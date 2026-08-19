@@ -18,7 +18,6 @@ import com.likelionknu.notdesign.report.exception.ResultNotImportedException;
 import com.likelionknu.notdesign.report.service.ReportAttributionEngine.Attribution;
 import com.likelionknu.notdesign.result.data.entity.Result;
 import com.likelionknu.notdesign.result.data.repository.ResultRepository;
-import com.likelionknu.notdesign.result.exception.ResultNotFoundException;
 import com.likelionknu.notdesign.result.service.ResultService;
 import com.likelionknu.notdesign.user.data.entity.User;
 import com.likelionknu.notdesign.user.data.exception.UserNotFoundException;
@@ -62,7 +61,6 @@ public class ReportGenerateService {
      * @return 생성된 리포트
      * @throws PlanProcessNotFoundException 진행 중인 사이클이 없는 경우
      * @throws ResultNotImportedException   리포트를 만들 새 측정 데이터가 없는 경우
-     * @throws ResultNotFoundException      사이클의 기준선 측정이 없는 경우
      */
     @Transactional
     public ReportResponseDto generateReport(String email) {
@@ -77,11 +75,7 @@ public class ReportGenerateService {
         LocalDate measuredDate = measured.getMeasuredAt().toLocalDate();
         int elapsedWeeks = countElapsedWeeks(process.getStartedAt(), measuredDate);
 
-        Result baseline = getBaseline(user, process);
-
-        if (baseline.getId().equals(measured.getId())) {
-            throw new ResultNotImportedException(user.getId());
-        }
+        Result baseline = getBaseline(user, process, measured);
 
         Map<ImprovementItem, Integer> deltas = computeDeltas(baseline, measured);
         ReportType type = decideType(process, plan, elapsedWeeks);
@@ -116,11 +110,9 @@ public class ReportGenerateService {
         }
     }
 
-    private Result getBaseline(User user, PlanProcess process) {
-        return resultRepository
-                .findFirstByUser_IdAndMeasuredAtGreaterThanEqualOrderByMeasuredAtAsc(
-                        user.getId(), process.getStartedAt().atStartOfDay())
-                .orElseThrow(() -> new ResultNotFoundException(process.getPlan().getId()));
+    private Result getBaseline(User user, PlanProcess process, Result measured) {
+        return reportService.findBaseline(user.getId(), process.getStartedAt(), measured.getId())
+                .orElseThrow(() -> new ResultNotImportedException(user.getId()));
     }
 
     private int countElapsedWeeks(LocalDate startedAt, LocalDate measuredDate) {
