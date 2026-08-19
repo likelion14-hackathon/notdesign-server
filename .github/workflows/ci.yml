@@ -47,7 +47,7 @@ jobs:
           script: |
             docker pull ghcr.io/${{ github.repository }}:latest
             docker rm -f proof || true       # 기존 컨테이너 제거(없어도 통과)
-            docker run -d --name proof \
+            docker run -d -e TZ=Asia/Seoul --name proof \
               --network host \
               --env-file /root/proof.env \
               --restart unless-stopped \
