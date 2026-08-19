@@ -38,11 +38,11 @@ cors:
 aws:
   s3:
     bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_S3_REGION}
 
 services:
   analyze:
     url: ${SERVICES_ANALYZE_URL}
-    region: ${AWS_S3_REGION}
 
 logging:
   level:
