@@ -51,13 +51,6 @@ public class Report {
     @Column(name = "pores_delta")
     private Integer poresDelta;
 
-    /**
-     * @deprecated 지표 변경으로 인한 삭제 예정
-     */
-    @Deprecated
-    @Column(name = "hydration_delta")
-    private Integer hydrationDelta;
-
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

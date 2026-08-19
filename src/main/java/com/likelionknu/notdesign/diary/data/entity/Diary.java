@@ -30,13 +30,6 @@ public class Diary {
     @Column
     private Integer pores;
 
-    /**
-     * @deprecated 지표 변경으로 인한 삭제 예정
-     */
-    @Deprecated
-    @Column(name = "tightness_and_dryness")
-    private Integer tightnessAndDryness;
-
     @Column
     private Integer flushing;
 
