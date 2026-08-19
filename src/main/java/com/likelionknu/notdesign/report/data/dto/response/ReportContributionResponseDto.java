@@ -15,7 +15,7 @@ public class ReportContributionResponseDto {
     private String improvementName;
     private PlanCategory category;
     private String categoryName;
-    private String name;
+    private String content;
     private BigDecimal score;
     private BigDecimal contributionRate;
     private Integer price;

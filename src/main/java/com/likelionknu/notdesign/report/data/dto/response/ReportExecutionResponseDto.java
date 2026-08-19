@@ -11,7 +11,7 @@ import java.util.List;
 public class ReportExecutionResponseDto {
     private PlanCategory category;
     private String categoryName;
-    private String name;
+    private String content;
     private List<Integer> plannedWeeks;
     private List<Integer> doneWeeks;
 }
