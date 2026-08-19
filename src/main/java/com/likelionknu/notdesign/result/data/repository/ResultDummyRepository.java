@@ -5,10 +5,14 @@ import com.likelionknu.notdesign.result.data.entity.ResultDummy;
 import com.likelionknu.notdesign.user.data.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface ResultDummyRepository extends JpaRepository<ResultDummy, Long> {
     Optional<ResultDummy> findFirstByUserAndClinicOrderByMeasuredAtDesc(User user, Clinic clinic);
 
     Optional<ResultDummy> findFirstByUserOrderByMeasuredAtDesc(User user);
+
+    Optional<ResultDummy> findFirstByUserAndMeasuredAtGreaterThanOrderByMeasuredAtDesc(User user,
+                                                                                       LocalDateTime measuredAt);
 }

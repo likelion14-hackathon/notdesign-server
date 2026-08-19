@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -98,18 +99,18 @@ public class ReportGenerateService {
 
     private Result getMeasured(User user) {
         Result measured = resultRepository.findFirstByUser_IdOrderByMeasuredAtDesc(user.getId())
-                .orElseGet(() -> importLatestDummy(user));
+                .orElseGet(() -> importDummy(user, null));
 
         if (reportRepository.existsByResult_Id(measured.getId())) {
-            throw new ResultNotImportedException(user.getId());
+            return importDummy(user, measured.getMeasuredAt());
         }
 
         return measured;
     }
 
-    private Result importLatestDummy(User user) {
+    private Result importDummy(User user, LocalDateTime after) {
         try {
-            return resultService.importLatestDummy(user, null);
+            return resultService.importDummy(user, null, after);
         } catch (com.likelionknu.notdesign.result.data.exception.ResultNotFoundException e) {
             throw new ResultNotImportedException(user.getId());
         }

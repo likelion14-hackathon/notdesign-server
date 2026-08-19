@@ -11,7 +11,9 @@ import com.likelionknu.notdesign.result.data.repository.ResultRepository;
 import com.likelionknu.notdesign.user.data.entity.User;
 import com.likelionknu.notdesign.user.data.exception.UserNotFoundException;
 import com.likelionknu.notdesign.user.data.repository.UserRepository;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,16 +39,15 @@ public class ResultService {
     public ResultResponseDto createResult(String email, Long clinicId) {
         User user = getUser(email);
 
-        return ResultResponseDto.from(importLatestDummy(user, clinicId));
+        return ResultResponseDto.from(importDummy(user, clinicId, null));
     }
 
     @Transactional
-    public Result importLatestDummy(User user, Long clinicId) {
+    public Result importDummy(User user, Long clinicId, LocalDateTime after) {
         // 클리닉 방문 측정을 시뮬레이션하기 위해 준비된 더미 측정값을 가져온다.
-        ResultDummy dummy = resultDummyRepository
-                .findFirstByUserOrderByMeasuredAtDesc(user)
+        ResultDummy dummy = findDummy(user, after)
                 .orElseThrow(() -> {
-                    log.error("[importLatestDummy] 더미 측정값 없음: userId={}", user.getId());
+                    log.error("[importDummy] 더미 측정값 없음: userId={}, after={}", user.getId(), after);
                     return new ResultNotFoundException();
                 });
 
@@ -62,7 +63,7 @@ public class ResultService {
                 .build();
 
         Result saved = resultRepository.save(result);
-        log.info("[importLatestDummy] 측정 결과 생성: resultId={}, userId={}", saved.getId(), user.getId());
+        log.info("[importDummy] 측정 결과 생성: resultId={}, userId={}", saved.getId(), user.getId());
 
         return saved;
     }
@@ -97,6 +98,13 @@ public class ResultService {
                 .orElseThrow(ResultNotFoundException::new);
 
         return ResultResponseDto.from(result);
+    }
+
+    private Optional<ResultDummy> findDummy(User user, LocalDateTime after) {
+        if (after == null) {
+            return resultDummyRepository.findFirstByUserOrderByMeasuredAtDesc(user);
+        }
+        return resultDummyRepository.findFirstByUserAndMeasuredAtGreaterThanOrderByMeasuredAtDesc(user, after);
     }
 
     // clinicId가 있으면 해당 클리닉, 없으면 더미에 기록된 클리닉(없을 수 있음)을 사용
