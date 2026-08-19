@@ -19,6 +19,7 @@ import com.likelionknu.notdesign.report.service.ReportAttributionEngine.Attribut
 import com.likelionknu.notdesign.result.data.entity.Result;
 import com.likelionknu.notdesign.result.data.repository.ResultRepository;
 import com.likelionknu.notdesign.result.exception.ResultNotFoundException;
+import com.likelionknu.notdesign.result.service.ResultService;
 import com.likelionknu.notdesign.user.data.entity.User;
 import com.likelionknu.notdesign.user.data.exception.UserNotFoundException;
 import com.likelionknu.notdesign.user.data.repository.UserRepository;
@@ -51,6 +52,7 @@ public class ReportGenerateService {
     private final ReportAttributionEngine attributionEngine;
     private final ReportAiClient reportAiClient;
     private final ReportService reportService;
+    private final ResultService resultService;
 
     /**
      * 불러온 측정 데이터로 기여도 리포트를 생성합니다.
@@ -96,13 +98,21 @@ public class ReportGenerateService {
 
     private Result getMeasured(User user) {
         Result measured = resultRepository.findFirstByUser_IdOrderByMeasuredAtDesc(user.getId())
-                .orElseThrow(() -> new ResultNotImportedException(user.getId()));
+                .orElseGet(() -> importLatestDummy(user));
 
         if (reportRepository.existsByResult_Id(measured.getId())) {
             throw new ResultNotImportedException(user.getId());
         }
 
         return measured;
+    }
+
+    private Result importLatestDummy(User user) {
+        try {
+            return resultService.importLatestDummy(user, null);
+        } catch (com.likelionknu.notdesign.result.data.exception.ResultNotFoundException e) {
+            throw new ResultNotImportedException(user.getId());
+        }
     }
 
     private Result getBaseline(User user, PlanProcess process) {

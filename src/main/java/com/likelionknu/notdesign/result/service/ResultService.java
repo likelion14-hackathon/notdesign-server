@@ -37,11 +37,16 @@ public class ResultService {
     public ResultResponseDto createResult(String email, Long clinicId) {
         User user = getUser(email);
 
+        return ResultResponseDto.from(importLatestDummy(user, clinicId));
+    }
+
+    @Transactional
+    public Result importLatestDummy(User user, Long clinicId) {
         // 클리닉 방문 측정을 시뮬레이션하기 위해 준비된 더미 측정값을 가져온다.
         ResultDummy dummy = resultDummyRepository
                 .findFirstByUserOrderByMeasuredAtDesc(user)
                 .orElseThrow(() -> {
-                    log.error("[createResult] 더미 측정값 없음: userId={}", user.getId());
+                    log.error("[importLatestDummy] 더미 측정값 없음: userId={}", user.getId());
                     return new ResultNotFoundException();
                 });
 
@@ -57,9 +62,9 @@ public class ResultService {
                 .build();
 
         Result saved = resultRepository.save(result);
-        log.info("[createResult] 측정 결과 생성: resultId={}, userId={}", saved.getId(), user.getId());
+        log.info("[importLatestDummy] 측정 결과 생성: resultId={}, userId={}", saved.getId(), user.getId());
 
-        return ResultResponseDto.from(saved);
+        return saved;
     }
 
     /**
