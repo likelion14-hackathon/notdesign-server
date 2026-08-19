@@ -102,7 +102,7 @@ public class ReportService {
                     .improvementName(reportItem.getImprovement().getDisplayName())
                     .category(planItem.getCategory())
                     .categoryName(planItem.getCategory().getDisplayName())
-                    .name(planItem.getName())
+                    .content(planItem.getName())
                     .score(reportItem.getScore())
                     .contributionRate(reportItem.getContributionRate())
                     .price(reportItem.getPrice())
@@ -134,7 +134,7 @@ public class ReportService {
             executions.add(ReportExecutionResponseDto.builder()
                     .category(item.getCategory())
                     .categoryName(item.getCategory().getDisplayName())
-                    .name(item.getName())
+                    .content(item.getName())
                     .plannedWeeks(execution.plannedWeeks())
                     .doneWeeks(execution.doneWeeks())
                     .build());
