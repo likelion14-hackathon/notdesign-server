@@ -147,6 +147,16 @@ public class JwtTokenProvider {
     }
 
     /**
+     * 토큰에서 사용자 식별자(subject)를 추출한다.
+     *
+     * @param token 대상 토큰
+     * @return 토큰의 subject(email)
+     */
+    public String getSubject(String token) {
+        return parseClaims(token).getSubject();
+    }
+
+    /**
      * "Bearer " 접두사를 제거해 순수 토큰 문자열을 반환한다.
      *
      * @param bearerToken Authorization 헤더 값
