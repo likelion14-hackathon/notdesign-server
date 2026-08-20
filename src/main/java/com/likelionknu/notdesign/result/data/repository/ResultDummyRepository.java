@@ -15,4 +15,6 @@ public interface ResultDummyRepository extends JpaRepository<ResultDummy, Long> 
 
     Optional<ResultDummy> findFirstByUserAndMeasuredAtGreaterThanOrderByMeasuredAtDesc(User user,
                                                                                        LocalDateTime measuredAt);
+
+    boolean existsByUserAndMeasuredAtGreaterThan(User user, LocalDateTime measuredAt);
 }

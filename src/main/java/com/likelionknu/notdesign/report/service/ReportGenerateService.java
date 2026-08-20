@@ -70,7 +70,7 @@ public class ReportGenerateService {
                 .orElseThrow(() -> new PlanProcessNotFoundException(user.getId()));
 
         Plan plan = process.getActivePlan();
-        Result measured = getMeasured(user);
+        Result measured = getMeasured(user, process);
 
         LocalDate measuredDate = measured.getMeasuredAt().toLocalDate();
         int elapsedWeeks = countElapsedWeeks(process.getStartedAt(), measuredDate);
@@ -91,15 +91,21 @@ public class ReportGenerateService {
         return reportService.getReport(email, report.getId());
     }
 
-    private Result getMeasured(User user) {
-        Result measured = resultRepository.findFirstByUser_IdOrderByMeasuredAtDesc(user.getId())
+    private Result getMeasured(User user, PlanProcess process) {
+        Result latest = resultRepository.findFirstByUser_IdOrderByMeasuredAtDesc(user.getId())
                 .orElseGet(() -> importDummy(user, null));
 
-        if (reportRepository.existsByResult_Id(measured.getId())) {
-            return importDummy(user, measured.getMeasuredAt());
+        if (reportRepository.existsByResult_Id(latest.getId())
+                || resultService.hasDummyAfter(user, latest.getMeasuredAt())
+                || hasNoBaseline(user, process, latest)) {
+            return importDummy(user, latest.getMeasuredAt());
         }
 
-        return measured;
+        return latest;
+    }
+
+    private boolean hasNoBaseline(User user, PlanProcess process, Result measured) {
+        return reportService.findBaseline(user.getId(), process.getStartedAt(), measured.getId()).isEmpty();
     }
 
     private Result importDummy(User user, LocalDateTime after) {

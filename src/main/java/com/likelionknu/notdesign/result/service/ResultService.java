@@ -59,6 +59,11 @@ public class ResultService {
         return saveResult(user, resolveClinic(clinicId, dummy), dummy);
     }
 
+    @Transactional(readOnly = true)
+    public boolean hasDummyAfter(User user, LocalDateTime after) {
+        return resultDummyRepository.existsByUserAndMeasuredAtGreaterThan(user, after);
+    }
+
     private Result saveResult(User user, Clinic clinic, ResultDummy dummy) {
         Result result = Result.builder()
                 .user(user)
