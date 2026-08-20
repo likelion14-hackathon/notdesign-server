@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import com.likelionknu.notdesign.common.response.GlobalResponse;
 import com.likelionknu.notdesign.common.security.SecurityUtil;
 import com.likelionknu.notdesign.user.data.dto.request.KakaoLoginRequestDto;
+import com.likelionknu.notdesign.user.data.dto.request.RefreshTokenRequestDto;
 import com.likelionknu.notdesign.user.data.dto.request.SignInRequestDto;
 import com.likelionknu.notdesign.user.data.dto.request.SignUpRequestDto;
 import com.likelionknu.notdesign.user.data.dto.response.TokenResponseDto;
@@ -47,5 +48,12 @@ public class AuthController {
     public GlobalResponse<Void> logout(@RequestHeader(HttpHeaders.AUTHORIZATION) String bearerToken) {
         authService.logout(SecurityUtil.getUsername(), bearerToken);
         return GlobalResponse.ok();
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "액세스 토큰 재발급")
+    public GlobalResponse<TokenResponseDto> refresh(
+            @Valid @RequestBody RefreshTokenRequestDto refreshTokenRequestDto) {
+        return GlobalResponse.ok(authService.reissue(refreshTokenRequestDto.getRefreshToken()));
     }
 }

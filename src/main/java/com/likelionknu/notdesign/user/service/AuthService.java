@@ -12,6 +12,7 @@ import com.likelionknu.notdesign.user.data.entity.User;
 import com.likelionknu.notdesign.user.data.enums.SocialProvider;
 import com.likelionknu.notdesign.user.data.exception.EmailDuplicationException;
 import com.likelionknu.notdesign.user.data.exception.PasswordInvalidException;
+import com.likelionknu.notdesign.user.data.exception.TokenInvalidException;
 import com.likelionknu.notdesign.user.data.exception.UserNotFoundException;
 import com.likelionknu.notdesign.user.data.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -91,6 +92,23 @@ public class AuthService {
 
         redisService.deleteValues(email);
         tokenProvider.blacklistAccessToken(accessToken);
+    }
+
+    /** 리프레시 토큰 검증(서명·만료·Redis 저장값 대조) 후 토큰 재발급 */
+    public TokenResponseDto reissue(String refreshToken) {
+        if (!tokenProvider.validateToken(refreshToken)) {
+            throw new TokenInvalidException();
+        }
+
+        String email = tokenProvider.getSubject(refreshToken);
+        Object savedToken = redisService.getValues(email);
+        if (savedToken == null || !refreshToken.equals(savedToken.toString())) {
+            log.warn("[reissue] 저장된 리프레시 토큰과 불일치: {}", email);
+            throw new TokenInvalidException();
+        }
+
+        User user = getUserEntity(email);
+        return issueToken(user);
     }
 
     private User registerKakaoUser(KakaoUserInfo userInfo) {
