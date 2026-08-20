@@ -11,7 +11,6 @@ import com.likelionknu.notdesign.result.data.repository.ResultRepository;
 import com.likelionknu.notdesign.user.data.entity.User;
 import com.likelionknu.notdesign.user.data.exception.UserNotFoundException;
 import com.likelionknu.notdesign.user.data.repository.UserRepository;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -28,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class ResultService {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final double WEEKLY_IMPROVEMENT_RATE = 0.02;
+    private static final int INITIAL_PIGMENTATION = 62;
+    private static final int INITIAL_ERYTHEMA = 52;
+    private static final int INITIAL_PORES = 54;
 
     private final ResultRepository resultRepository;
     private final ResultDummyRepository resultDummyRepository;
@@ -52,20 +54,9 @@ public class ResultService {
     public Result importDummy(User user, Long clinicId, LocalDateTime after) {
         // 클리닉 방문 측정을 시뮬레이션하기 위해 준비된 더미 측정값을 가져온다.
         ResultDummy dummy = findDummy(user, after)
-                .orElseThrow(() -> {
-                    log.error("[importDummy] 더미 측정값 없음: userId={}, after={}", user.getId(), after);
-                    return new ResultNotFoundException();
-                });
+                .orElseGet(() -> resultDummyRepository.save(generateDummy(user)));
 
         return saveResult(user, resolveClinic(clinicId, dummy), dummy);
-    }
-
-    @Transactional
-    public Result importDummyOrGenerate(User user, LocalDateTime after, LocalDate cycleStartedAt) {
-        ResultDummy dummy = findDummy(user, after)
-                .orElseGet(() -> resultDummyRepository.save(generateDummy(user, cycleStartedAt)));
-
-        return saveResult(user, dummy.getClinic(), dummy);
     }
 
     private Result saveResult(User user, Clinic clinic, ResultDummy dummy) {
@@ -84,18 +75,21 @@ public class ResultService {
         return saved;
     }
 
-    private ResultDummy generateDummy(User user, LocalDate cycleStartedAt) {
+    private ResultDummy generateDummy(User user) {
         LocalDateTime measuredAt = LocalDateTime.now(KST);
 
-        Result latest = resultRepository.findFirstByUser_IdOrderByMeasuredAtDesc(user.getId())
-                .orElseThrow(() -> {
-                    log.error("[generateDummy] 기준으로 삼을 측정값 없음: userId={}", user.getId());
-                    return new ResultNotFoundException();
-                });
+        return resultRepository.findFirstByUser_IdOrderByMeasuredAtDesc(user.getId())
+                .map(latest -> improvedDummy(user, latest, measuredAt))
+                .orElseGet(() -> initialDummy(user, measuredAt));
+    }
 
-        double ratio = improvementRatio(cycleStartedAt, measuredAt.toLocalDate());
+    private ResultDummy improvedDummy(User user, Result latest, LocalDateTime measuredAt) {
+        double ratio = improvementRatio(latest.getMeasuredAt(), measuredAt);
 
-        ResultDummy dummy = ResultDummy.builder()
+        log.info("[generateDummy] 더미 측정값 자동 생성: userId={}, 기준 resultId={}, 개선율={}",
+                user.getId(), latest.getId(), 1 - ratio);
+
+        return ResultDummy.builder()
                 .user(user)
                 .clinic(latest.getClinic())
                 .pigmentation(improve(latest.getPigmentation(), ratio))
@@ -103,15 +97,22 @@ public class ResultService {
                 .pores(improve(latest.getPores(), ratio))
                 .measuredAt(measuredAt)
                 .build();
-
-        log.info("[generateDummy] 더미 측정값 자동 생성: userId={}, 기준 resultId={}, 개선율={}",
-                user.getId(), latest.getId(), 1 - ratio);
-
-        return dummy;
     }
 
-    private double improvementRatio(LocalDate cycleStartedAt, LocalDate measuredDate) {
-        long elapsedWeeks = Math.max(0, ChronoUnit.WEEKS.between(cycleStartedAt, measuredDate));
+    private ResultDummy initialDummy(User user, LocalDateTime measuredAt) {
+        log.info("[generateDummy] 초기 더미 측정값 생성: userId={}", user.getId());
+
+        return ResultDummy.builder()
+                .user(user)
+                .pigmentation(INITIAL_PIGMENTATION)
+                .erythema(INITIAL_ERYTHEMA)
+                .pores(INITIAL_PORES)
+                .measuredAt(measuredAt)
+                .build();
+    }
+
+    private double improvementRatio(LocalDateTime previousMeasuredAt, LocalDateTime measuredAt) {
+        long elapsedWeeks = Math.max(0, ChronoUnit.WEEKS.between(previousMeasuredAt, measuredAt));
 
         return Math.max(0, 1 - WEEKLY_IMPROVEMENT_RATE * elapsedWeeks);
     }
