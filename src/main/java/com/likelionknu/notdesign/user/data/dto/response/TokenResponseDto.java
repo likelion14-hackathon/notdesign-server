@@ -9,4 +9,6 @@ import lombok.*;
 public class TokenResponseDto {
     private String accessToken;
     private String refreshToken;
+    private String name;
+    private String email;
 }

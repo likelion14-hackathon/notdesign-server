@@ -8,6 +8,10 @@ spring:
   jpa:
     open-in-view: false
     database-platform: org.hibernate.dialect.MariaDBDialect
+  servlet:
+    multipart:
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:10MB}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:10MB}
 
 jwt:
   access-token:
@@ -18,3 +22,22 @@ jwt:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+kakao:
+  client-id: ${KAKAO_CLIENT_ID:}
+  client-secret: ${KAKAO_CLIENT_SECRET:}
+  redirect-uri: ${KAKAO_REDIRECT_URI:}
+  token-uri: ${KAKAO_TOKEN_URI:https://kauth.kakao.com/oauth/token}
+  user-info-uri: ${KAKAO_USER_INFO_URI:https://kapi.kakao.com/v2/user/me}
+
+services:
+  analyze:
+    url: ${SERVICES_ANALYZE_URL:http://localhost:8000}
+
+aws:
+  credentials:
+    access-key: ${AWS_ACCESS_KEY_ID:}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:}
+  s3:
+    bucket: ${AWS_S3_BUCKET:}
+    region: ${AWS_S3_REGION:ap-northeast-2}

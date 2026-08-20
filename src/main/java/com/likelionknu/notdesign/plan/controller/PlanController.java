@@ -1,0 +1,88 @@
+package com.likelionknu.notdesign.plan.controller;
+
+import com.likelionknu.notdesign.common.response.GlobalResponse;
+import com.likelionknu.notdesign.common.security.SecurityUtil;
+import com.likelionknu.notdesign.plan.data.dto.request.PlanCreateRequestDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanAdjustResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanCreateResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanDetailResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanStartResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanStatsResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanSummaryResponseDto;
+import com.likelionknu.notdesign.plan.data.dto.response.PlanTodoResponseDto;
+import com.likelionknu.notdesign.plan.service.PlanGenerationService;
+import com.likelionknu.notdesign.plan.service.PlanService;
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/plans")
+@RequiredArgsConstructor
+public class PlanController {
+    private final PlanService planService;
+    private final PlanGenerationService planGenerationService;
+
+    @PostMapping
+    @Operation(summary = "AI 플랜 생성")
+    public GlobalResponse<PlanCreateResponseDto> generatePlan(@Valid @RequestBody PlanCreateRequestDto request) {
+        return GlobalResponse.ok(planGenerationService.generate(SecurityUtil.getUsername(), request));
+    }
+
+    @GetMapping("/current")
+    @Operation(summary = "현재 플랜 진행 요약 조회")
+    public GlobalResponse<PlanSummaryResponseDto> getCurrentPlanSummary() {
+        return GlobalResponse.ok(planService.getCurrentPlanSummary(SecurityUtil.getUsername()));
+    }
+
+    @GetMapping("/current/detail")
+    @Operation(summary = "현재 플랜 상세 조회")
+    public GlobalResponse<PlanDetailResponseDto> getCurrentPlanDetail() {
+        return GlobalResponse.ok(planService.getCurrentPlanDetail(SecurityUtil.getUsername()));
+    }
+
+    @GetMapping("/current/stats")
+    @Operation(summary = "현재 플랜 기록 통계 조회")
+    public GlobalResponse<PlanStatsResponseDto> getCurrentPlanStats() {
+        return GlobalResponse.ok(planService.getCurrentPlanStats(SecurityUtil.getUsername()));
+    }
+
+    @GetMapping("/current/todos")
+    @Operation(summary = "오늘 체크리스트 조회")
+    public GlobalResponse<List<PlanTodoResponseDto>> getCurrentPlanTodos() {
+        return GlobalResponse.ok(planService.getCurrentPlanTodos(SecurityUtil.getUsername()));
+    }
+
+    @PostMapping("/{planId}/start")
+    @Operation(summary = "플랜 시작")
+    public GlobalResponse<PlanStartResponseDto> startPlan(@PathVariable Long planId) {
+        return GlobalResponse.ok(planService.startPlan(SecurityUtil.getUsername(), planId));
+    }
+
+    @PostMapping("/{planId}/adjust")
+    @Operation(summary = "조정 플랜 적용 및 시작")
+    public GlobalResponse<PlanAdjustResponseDto> applyAdjustedPlan(@PathVariable Long planId) {
+        return GlobalResponse.ok(planService.applyAdjustedPlan(SecurityUtil.getUsername(), planId));
+    }
+
+    @PostMapping("/{planId}/next")
+    @Operation(summary = "다음 12주 플랜 시작")
+    public GlobalResponse<PlanStartResponseDto> startNextPlan(@PathVariable Long planId) {
+        return GlobalResponse.ok(planService.startNextPlan(SecurityUtil.getUsername(), planId));
+    }
+
+    @DeleteMapping("/{planId}")
+    @Operation(summary = "플랜 삭제")
+    public GlobalResponse<Void> deletePlan(@PathVariable Long planId) {
+        planService.deletePlan(planId);
+        return GlobalResponse.ok();
+    }
+}
