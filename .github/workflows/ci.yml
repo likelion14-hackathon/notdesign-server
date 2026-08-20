@@ -1,9 +1,9 @@
-# develop push 시 Docker 이미지 빌드 → GHCR 푸시 → 서버 자동 배포(CD)
+# develop/main push 시 Docker 이미지 빌드 → GHCR 푸시 → 서버 자동 배포(CD)
 name: CI
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ develop, main ]
 
 jobs:
   build-and-push:
