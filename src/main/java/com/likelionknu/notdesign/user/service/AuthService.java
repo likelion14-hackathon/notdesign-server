@@ -126,6 +126,8 @@ public class AuthService {
         return TokenResponseDto.builder()
                 .accessToken(token.getAccessToken())
                 .refreshToken(token.getRefreshToken())
+                .name(user.getName())
+                .email(user.getEmail())
                 .build();
     }
 
