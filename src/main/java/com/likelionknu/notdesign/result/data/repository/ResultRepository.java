@@ -19,4 +19,6 @@ public interface ResultRepository extends JpaRepository<Result, Long> {
 
     Optional<Result> findFirstByUser_IdAndMeasuredAtLessThanOrderByMeasuredAtDesc(
             Long userId, LocalDateTime startedAt);
+
+    boolean existsByUser_IdAndMeasuredAt(Long userId, LocalDateTime measuredAt);
 }

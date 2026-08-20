@@ -12,4 +12,8 @@ public interface DailyChecklistRepository extends JpaRepository<DailyChecklist, 
 
     @EntityGraph(attributePaths = {"timeline", "timeline.item"})
     List<DailyChecklist> findAllByProcess_IdAndTargetDateLessThanEqual(Long processId, LocalDate targetDate);
+
+    void deleteByProcess_IdAndTargetDateGreaterThan(Long processId, LocalDate targetDate);
+
+    boolean existsByProcess_Id(Long processId);
 }

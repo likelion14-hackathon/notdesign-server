@@ -27,8 +27,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -188,6 +190,7 @@ public class ReportAttributionEngine {
     private Map<Long, Map<LocalDate, Boolean>> getChecklists(Long processId, LocalDate until) {
         List<DailyChecklist> checklists =
                 dailyChecklistRepository.findAllByProcess_IdAndTargetDateLessThanEqual(processId, until);
+        Set<LocalDate> recordedDates = getRecordedDates(processId, until);
 
         Map<Long, Long> timelineByChecklist = new HashMap<>();
         Map<Long, Map<LocalDate, Boolean>> checklistByTimeline = new HashMap<>();
@@ -195,6 +198,11 @@ public class ReportAttributionEngine {
         List<Long> checklistIds = new ArrayList<>();
 
         for (DailyChecklist checklist : checklists) {
+            // 하루 기록이 없는 날은 실행 여부를 알 수 없어 실행률 계산에서 제외한다.
+            if (!recordedDates.contains(checklist.getTargetDate())) {
+                continue;
+            }
+
             Long timelineId = checklist.getTimeline().getId();
 
             timelineByChecklist.put(checklist.getId(), timelineId);
@@ -216,6 +224,17 @@ public class ReportAttributionEngine {
         }
 
         return checklistByTimeline;
+    }
+
+    private Set<LocalDate> getRecordedDates(Long processId, LocalDate until) {
+        Set<LocalDate> dates = new HashSet<>();
+
+        for (Diary diary : diaryRepository
+                .findAllByProcess_IdAndRecordedAtLessThanEqualOrderByRecordedAtAsc(processId, until.atTime(23, 59, 59))) {
+            dates.add(diary.getRecordedAt().toLocalDate());
+        }
+
+        return dates;
     }
 
     private Map<String, Map<ImprovementItem, BigDecimal>> getWeights(List<PlanTimeline> timelines) {

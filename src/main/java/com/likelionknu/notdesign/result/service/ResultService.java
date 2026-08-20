@@ -2,6 +2,10 @@ package com.likelionknu.notdesign.result.service;
 
 import com.likelionknu.notdesign.clinic.data.entity.Clinic;
 import com.likelionknu.notdesign.clinic.data.repository.ClinicRepository;
+import com.likelionknu.notdesign.plan.data.entity.PlanProcess;
+import com.likelionknu.notdesign.plan.data.repository.PlanProcessRepository;
+import com.likelionknu.notdesign.report.data.enums.ReportType;
+import com.likelionknu.notdesign.report.data.repository.ReportRepository;
 import com.likelionknu.notdesign.result.data.dto.response.ResultResponseDto;
 import com.likelionknu.notdesign.result.data.entity.Result;
 import com.likelionknu.notdesign.result.data.entity.ResultDummy;
@@ -12,8 +16,10 @@ import com.likelionknu.notdesign.user.data.entity.User;
 import com.likelionknu.notdesign.user.data.exception.UserNotFoundException;
 import com.likelionknu.notdesign.user.data.repository.UserRepository;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class ResultService {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final LocalTime MEASURED_TIME = LocalTime.of(10, 30);
+    private static final int MID_REPORT_WEEK = 6;
     private static final double WEEKLY_IMPROVEMENT_RATE = 0.02;
     private static final int INITIAL_PIGMENTATION = 62;
     private static final int INITIAL_ERYTHEMA = 52;
@@ -35,6 +43,8 @@ public class ResultService {
     private final ResultDummyRepository resultDummyRepository;
     private final ClinicRepository clinicRepository;
     private final UserRepository userRepository;
+    private final PlanProcessRepository planProcessRepository;
+    private final ReportRepository reportRepository;
 
     /**
      * 측정 결과를 생성합니다. 사용자의 최신 더미 측정값(result_dummy)을 실제 결과(result)로 복사합니다.
@@ -81,7 +91,7 @@ public class ResultService {
     }
 
     private ResultDummy generateDummy(User user) {
-        LocalDateTime measuredAt = LocalDateTime.now(KST);
+        LocalDateTime measuredAt = nextMeasuredAt(user);
 
         return resultRepository.findFirstByUser_IdOrderByMeasuredAtDesc(user.getId())
                 .map(latest -> improvedDummy(user, latest, measuredAt))
@@ -117,9 +127,33 @@ public class ResultService {
     }
 
     private double improvementRatio(LocalDateTime previousMeasuredAt, LocalDateTime measuredAt) {
-        long elapsedWeeks = Math.max(0, ChronoUnit.WEEKS.between(previousMeasuredAt, measuredAt));
+        long elapsedWeeks = Math.max(0,
+                ChronoUnit.WEEKS.between(previousMeasuredAt.toLocalDate(), measuredAt.toLocalDate()));
 
         return Math.max(0, 1 - WEEKLY_IMPROVEMENT_RATE * elapsedWeeks);
+    }
+
+    private LocalDateTime nextMeasuredAt(User user) {
+        return planProcessRepository.findByUser_IdAndCompletedAtIsNull(user.getId())
+                .map(this::milestoneOf)
+                .orElseGet(() -> LocalDateTime.now(KST));
+    }
+
+    private LocalDateTime milestoneOf(PlanProcess process) {
+        int totalWeeks = process.getActivePlan().getDurationWeeks();
+
+        List<Long> planIds = new ArrayList<>();
+        planIds.add(process.getPlan().getId());
+
+        if (process.getFuturePlan() != null) {
+            planIds.add(process.getFuturePlan().getId());
+        }
+
+        int week = reportRepository.existsByPlan_IdInAndType(planIds, ReportType.MID)
+                ? totalWeeks
+                : Math.min(MID_REPORT_WEEK, totalWeeks);
+
+        return process.getStartedAt().plusWeeks(week).atTime(MEASURED_TIME);
     }
 
     private Integer improve(Integer value, double ratio) {
@@ -163,10 +197,13 @@ public class ResultService {
     }
 
     private Optional<ResultDummy> findDummy(User user, LocalDateTime after) {
-        if (after == null) {
-            return resultDummyRepository.findFirstByUserOrderByMeasuredAtDesc(user);
-        }
-        return resultDummyRepository.findFirstByUserAndMeasuredAtGreaterThanOrderByMeasuredAtDesc(user, after);
+        Optional<ResultDummy> dummy = after == null
+                ? resultDummyRepository.findFirstByUserOrderByMeasuredAtDesc(user)
+                : resultDummyRepository.findFirstByUserAndMeasuredAtGreaterThanOrderByMeasuredAtDesc(user, after);
+
+        // 같은 측정일의 result 가 이미 있으면 불러온 것으로 보고 다시 복사하지 않는다.
+        return dummy.filter(found ->
+                !resultRepository.existsByUser_IdAndMeasuredAt(user.getId(), found.getMeasuredAt()));
     }
 
     // clinicId가 있으면 해당 클리닉, 없으면 더미에 기록된 클리닉(없을 수 있음)을 사용

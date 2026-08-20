@@ -54,6 +54,7 @@ public class PlanService {
     private final ResultRepository resultRepository;
     private final DiaryRepository diaryRepository;
     private final DailyChecklistRepository dailyChecklistRepository;
+    private final PlanChecklistService planChecklistService;
 
     /**
      * 홈 화면에서 현재 진행 중인 플랜의 진행 요약을 조회합니다.
@@ -151,13 +152,16 @@ public class PlanService {
      * @param email 조회 대상 사용자
      * @return 오늘 날짜의 실천 항목 목록 (기록 생성 전이라 실천 여부는 모두 미완료)
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public List<PlanTodoResponseDto> getCurrentPlanTodos(String email) {
         PlanProcess process = getCurrentProcess(email);
+        planChecklistService.ensureGenerated(process);
+
         LocalDate today = LocalDate.now(KST);
+        LocalDate targetDate = today.isBefore(process.getStartedAt()) ? process.getStartedAt() : today;
 
         return dailyChecklistRepository
-                .findAllByProcess_IdAndTargetDateOrderByTimeline_Item_IdAsc(process.getId(), today)
+                .findAllByProcess_IdAndTargetDateOrderByTimeline_Item_IdAsc(process.getId(), targetDate)
                 .stream()
                 .map(this::toTodo)
                 .toList();
@@ -189,6 +193,7 @@ public class PlanService {
                 .startedAt(LocalDate.now(KST))
                 .build();
         planProcessRepository.save(process);
+        planChecklistService.generate(process, plan, process.getStartedAt());
 
         return PlanStartResponseDto.builder()
                 .processId(process.getId())
@@ -211,6 +216,7 @@ public class PlanService {
         Plan adjustedPlan = planRepository.findById(planId).orElseThrow(() -> new PlanNotFoundException(planId));
 
         process.applyFuturePlan(adjustedPlan);
+        planChecklistService.regenerateFrom(process, adjustedPlan, LocalDate.now(KST));
 
         return PlanAdjustResponseDto.builder()
                 .planId(adjustedPlan.getId())
@@ -235,17 +241,24 @@ public class PlanService {
         Plan nextPlan = planRepository.findById(planId).orElseThrow(() -> new PlanNotFoundException(planId));
 
         LocalDate today = LocalDate.now(KST);
+        LocalDate nextStartedAt = process.getStartedAt().plusWeeks(progress.totalWeeks());
+
+        if (nextStartedAt.isBefore(today)) {
+            nextStartedAt = today;
+        }
+
         process.complete(today);
 
-        log.info("[startNextPlan] 사이클 종료: processId={}, {}/{}주 진행 후 다음 사이클 시작",
-                process.getId(), progress.currentWeek(), progress.totalWeeks());
+        log.info("[startNextPlan] 사이클 종료: processId={}, {}/{}주 진행 후 다음 사이클 시작일 {}",
+                process.getId(), progress.currentWeek(), progress.totalWeeks(), nextStartedAt);
 
         PlanProcess nextProcess = PlanProcess.builder()
                 .plan(nextPlan)
                 .user(process.getUser())
-                .startedAt(today)
+                .startedAt(nextStartedAt)
                 .build();
         planProcessRepository.save(nextProcess);
+        planChecklistService.generate(nextProcess, nextPlan, nextProcess.getStartedAt());
 
         return PlanStartResponseDto.builder()
                 .processId(nextProcess.getId())
