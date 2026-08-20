@@ -219,10 +219,18 @@ public class PlanGenerationService {
 
         PlanGenerationAiResponse retried = planAiClient.generate(systemPrompt, retryPrompt);
         List<String> retryViolations = planGenerationValidator.validate(retried, catalog, durationWeeks);
-        if (!retryViolations.isEmpty()) {
-            throw new PlanGenerationFailedException("재요청 후에도 규칙 위반: " + retryViolations);
+        if (retryViolations.isEmpty()) {
+            return retried;
         }
 
+        // 재요청 후에도 위반이 남으면, 조립 단계에서 예외를 유발하는 치명적 위반만 실패 처리하고
+        // 나머지 규칙 위반은 로그만 남긴 채 생성을 이어간다.
+        List<String> fatalViolations = planGenerationValidator.validateFatal(retried, catalog);
+        if (!fatalViolations.isEmpty()) {
+            throw new PlanGenerationFailedException("재요청 후에도 복구 불가한 위반: " + fatalViolations);
+        }
+
+        log.warn("[PlanGenerationService] 규칙 위반이 남았으나 생성을 진행함: {}", retryViolations);
         return retried;
     }
 
