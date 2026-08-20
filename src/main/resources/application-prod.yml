@@ -5,6 +5,7 @@ spring:
       chat:
         model: ${OPENAI_CHAT_MODEL}
         temperature: ${OPENAI_CHAT_TEMPERATURE}
+        max-retries: 0
   datasource:
     url: jdbc:mariadb://${DB_HOST}:${DB_PORT}/${DB_NAME}
     username: ${DB_USERNAME}
@@ -46,6 +47,12 @@ aws:
 services:
   analyze:
     url: ${SERVICES_ANALYZE_URL}
+
+app:
+  ai:
+    fallback:
+      # 성능 좋은 순. 앞에서부터 시도하고 한도(429)·사용 불가 시 다음 모델로 넘어간다.
+      models: ${AI_FALLBACK_MODELS:gpt-5.6-sol,gpt-5.5-pro,gpt-5.6-terra,gpt-5.5,gpt-5.4-pro,gpt-5.4,gpt-5.2,gpt-4.1,gpt-5.4-mini,gpt-4o}
 
 logging:
   level:

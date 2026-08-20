@@ -1,5 +1,6 @@
 package com.likelionknu.notdesign.report.service;
 
+import com.likelionknu.notdesign.common.ai.AiModelFallbackExecutor;
 import com.likelionknu.notdesign.report.data.enums.ReportType;
 import com.likelionknu.notdesign.report.exception.ReportGenerationFailedException;
 import lombok.extern.slf4j.Slf4j;
@@ -54,17 +55,20 @@ public class ReportAiClient {
             """;
 
     private final ChatClient chatClient;
+    private final AiModelFallbackExecutor fallbackExecutor;
 
-    public ReportAiClient(ChatModel chatModel) {
+    public ReportAiClient(ChatModel chatModel, AiModelFallbackExecutor fallbackExecutor) {
         this.chatClient = ChatClient.builder(chatModel).defaultSystem(SYSTEM).build();
+        this.fallbackExecutor = fallbackExecutor;
     }
 
     public Sentences write(ReportType type, String context) {
         try {
-            Sentences sentences = chatClient.prompt()
+            Sentences sentences = fallbackExecutor.execute(options -> chatClient.prompt()
                     .user("# 리포트 종류\n" + type.name() + "\n\n" + context)
+                    .options(options)
                     .call()
-                    .entity(Sentences.class);
+                    .entity(Sentences.class));
 
             if (sentences == null || sentences.summary() == null || sentences.summary().isBlank()) {
                 throw new ReportGenerationFailedException("summary 가 비어 있음");
